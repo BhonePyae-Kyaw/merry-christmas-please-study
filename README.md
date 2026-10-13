@@ -6,6 +6,8 @@ A question rolls in, then three gates come toward you — one per lane (`1a`, `1
 
 ## Play
 
+**Play online:** https://bhonepyae-kyaw.github.io/merry-christmas-please-study/
+
 It's a single static file with no build step. Open `index.html` in a browser, or serve the folder:
 
 ```sh
