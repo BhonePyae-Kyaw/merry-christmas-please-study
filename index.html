@@ -42,6 +42,8 @@ img{max-width:100%}
   --block-side:#8e2333;
   --skyline:#2f2557;
   --muted:#5f5a78;
+  --go-ink:#14935f;
+  --stop-ink:#b3263a;
   --d-sec:#ff7a59;
   --d-res:#3cc6d6;
   --d-perf:#b48cff;
@@ -91,7 +93,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-acti
 .toast span{font-size:13.5px;line-height:1.4}
 
 /* Overlays */
-.overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding-inline:16px;padding-block:16px;background:rgba(21,28,61,.55)}
+.overlay{position:absolute;inset:0;z-index:10;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding-inline:16px;padding-block:16px;background:rgba(21,28,61,.55)}
 .overlay.clear{background:linear-gradient(rgba(21,28,61,.15),rgba(21,28,61,.6))}
 .panel{width:100%;max-width:560px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;user-select:text;-webkit-user-select:text}
 .panel-wide{max-width:640px}
@@ -126,6 +128,34 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
 .bar .track{height:12px;border:2px solid var(--ink);border-radius:99px;overflow:hidden;background:var(--paper)}
 .bar .fill{height:100%;background:var(--dc)}
 .bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.bar>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Question sets + PDF generator */
+.panel{color-scheme:light}
+.sets{display:flex;flex-direction:column;gap:8px}
+.setrow{display:flex;gap:8px;align-items:stretch}
+.setrow .toggle{flex:1;min-width:0;text-align:left}
+.setrow .toggle .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setrow .toggle .n{margin-left:auto;flex:none}
+.del{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:0 10px;cursor:pointer;flex:none}
+.del.confirm{background:var(--stop);color:var(--paper)}
+.btn.small{font-size:13px;padding:7px 12px;border-width:2px;box-shadow:3px 3px 0 var(--ink);align-self:flex-start}
+.lbl{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:8px 10px;width:100%;min-width:0}
+.field:focus-visible{outline:3px solid var(--hoodie);outline-offset:2px}
+.field:disabled{opacity:.55}
+.check{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.check input{width:17px;height:17px;accent-color:var(--ink)}
+.filepick{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filepick .hint{min-width:0;overflow-wrap:anywhere}
+.two{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px}
+.two>div{display:flex;flex-direction:column;gap:7px;min-width:0}
+.genstatus{display:flex;flex-direction:column;gap:8px}
+.genstatus .timer{flex:none}
+.genstatus p{font-size:14px}
+.genstatus p.err{color:var(--stop-ink);font-weight:700}
+.genstatus p.ok{color:var(--go-ink);font-weight:700}
+.panel a{color:var(--ink)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ex-q{font-weight:700}
 .ans{border:2px solid var(--ink);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
 .ans span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
@@ -142,8 +172,8 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
 .missed li{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:13.5px;line-height:1.45}
 .missed .mq{font-weight:700}
 .missed .ma{color:var(--ink)}
-.missed .ma::before{content:"✓ ";color:#14935f;font-weight:700}
-.missed .mp{color:#b3263a}
+.missed .ma::before{content:"✓ ";color:var(--go-ink);font-weight:700}
+.missed .mp{color:var(--stop-ink)}
 .missed .mp::before{content:"✗ ";font-weight:700}
 .missed .me{color:var(--muted)}
 .empty{font-size:13.5px;color:var(--muted)}
@@ -151,6 +181,7 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
 @media (max-width:520px){
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .bar{grid-template-columns:80px 1fr 56px}
+  .two{grid-template-columns:1fr}
   .qcard{padding:10px 10px 10px;top:54px}
   .opts{gap:6px}
   .opts li{padding:5px 6px 6px}
@@ -201,7 +232,13 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
       <p class="lede">A question rolls in. Three gates follow, one per Availability Zone lane. Switch lanes, dodge the throttling, and run through the right answer before you reach it.</p>
 
       <div class="group">
-        <h3>Exam domains</h3>
+        <h3>Question set</h3>
+        <div class="sets" id="setList"></div>
+        <button class="btn small" id="newSetBtn">+ New set from a PDF</button>
+      </div>
+
+      <div class="group">
+        <h3 id="topicsHead">Exam domains</h3>
         <div class="chips" id="domainChips"></div>
         <p class="hint" id="domainHint">Weights are the share of the real exam.</p>
       </div>
@@ -248,6 +285,44 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
     </div>
   </div>
 
+  <!-- New set from a PDF -->
+  <div class="overlay" id="gen" hidden>
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="genTitle">
+      <p class="eyebrow">Custom question set</p>
+      <h2 id="genTitle">Make questions from a PDF</h2>
+      <p>Claude reads your PDF and writes multiple-choice questions in the same gate format as the built-in set. It runs on your own Anthropic API key. The PDF and key go only to Anthropic’s API.</p>
+      <div class="group">
+        <span class="lbl">PDF</span>
+        <div class="filepick">
+          <button class="btn small" id="genPick">Choose PDF</button>
+          <span class="hint" id="genFileName">No file chosen · up to 24 MB</span>
+        </div>
+        <input type="file" id="genFile" class="sr" accept="application/pdf,.pdf" tabindex="-1" aria-hidden="true">
+      </div>
+      <div class="group">
+        <label class="lbl" for="genKey">Anthropic API key</label>
+        <input type="password" id="genKey" class="field" placeholder="sk-ant-…" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="genRemember"> Remember the key in this browser</label>
+        <p class="hint">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. Usage is billed to that account, usually well under $2 per set.</p>
+      </div>
+      <div class="two">
+        <div><label class="lbl" for="genCount">Questions</label>
+          <select id="genCount" class="field"><option>30</option><option>50</option><option selected>70</option><option>100</option></select></div>
+        <div><label class="lbl" for="genFocus">Focus (optional)</label>
+          <input id="genFocus" class="field" placeholder="e.g. chapters 3–5, skip the intro" autocomplete="off"></div>
+      </div>
+      <div class="genstatus" id="genStatusWrap" hidden>
+        <div class="timer"><i id="genBar"></i></div>
+        <p id="genStatus" role="status"></p>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="genGo">Generate questions</button>
+        <button class="btn" id="genPlay" hidden>Play this set</button>
+        <button class="btn" id="genBack">Back</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Wrong answer -->
   <div class="overlay" id="explain" hidden>
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="exTitle">
@@ -288,7 +363,7 @@ kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid va
         <div><dt>Credits</dt><dd id="ovCoins">0</dd></div>
       </dl>
       <div class="group">
-        <h3>This run by domain</h3>
+        <h3>This run by topic</h3>
         <div class="bars" id="ovDomains"></div>
       </div>
       <div class="group">
@@ -394,6 +469,12 @@ const DOMAINS = {
   perf:{label:"Performance",weight:24},
   cost:{label:"Cost",weight:20}
 };
+const TOPIC_COLORS = ["d-sec","d-res","d-perf","d-cost"];
+const BUILTIN = {
+  id:"saa", title:"AWS SAA-C03", builtin:true,
+  topics:Object.keys(DOMAINS).map(id => ({id, label:DOMAINS[id].label, weight:DOMAINS[id].weight})),
+  questions:QUESTIONS
+};
 const PACE = {
   chill:{speed:11,read:1.4},
   normal:{speed:14,read:1.0},
@@ -417,11 +498,29 @@ const KEY = "azdash.v1";
 function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch(e){} }
 const saved = load();
-saved.best = saved.best || 0;
-saved.life = saved.life || {};
-for (const d in DOMAINS) saved.life[d] = saved.life[d] || {c:0,t:0};
 saved.settings = Object.assign({study:false,pace:"normal"}, saved.settings || {});
-saved.settings.domains = Object.assign({sec:true,res:true,perf:true,cost:true}, saved.settings.domains || {});
+saved.sets = Array.isArray(saved.sets) ? saved.sets : [];
+saved.activeSet = saved.activeSet || "saa";
+saved.bestBySet = saved.bestBySet || {};
+saved.lifeBySet = saved.lifeBySet || {};
+saved.settings.topicsBySet = saved.settings.topicsBySet || {};
+// carry over stats saved before custom sets existed
+if (saved.best && saved.bestBySet.saa == null) saved.bestBySet.saa = saved.best;
+if (saved.life && !saved.lifeBySet.saa) saved.lifeBySet.saa = saved.life;
+if (saved.settings.domains && !saved.settings.topicsBySet.saa) saved.settings.topicsBySet.saa = saved.settings.domains;
+delete saved.best; delete saved.life; delete saved.settings.domains;
+function activeSet(){ return saved.sets.find(s => s.id === saved.activeSet) || BUILTIN; }
+function topicInfo(set, id){
+  const i = Math.max(0, set.topics.findIndex(t => t.id === id));
+  return {label:set.topics[i].label, color:C[TOPIC_COLORS[i % TOPIC_COLORS.length]]};
+}
+function topicOn(set){ return saved.settings.topicsBySet[set.id] = saved.settings.topicsBySet[set.id] || {}; }
+function setPool(set){ const on = topicOn(set); return set.questions.filter(q => on[q.d] !== false); }
+function lifeOf(set){
+  const l = saved.lifeBySet[set.id] = saved.lifeBySet[set.id] || {};
+  for (const t of set.topics) l[t.id] = l[t.id] || {c:0,t:0};
+  return l;
+}
 if (!PACE[saved.settings.pace]) saved.settings.pace = "normal";
 
 /* ---------- State ---------- */
@@ -429,7 +528,7 @@ const S = {
   mode:"menu", clock:0, dist:0, runT:0, speed:10, base:14, points:0, coins:0, lives:3,
   streak:0, bestStreak:0, answered:0, correct:0, run:{}, missed:[], objs:[], gate:null,
   qIn:0, obsIn:0, invuln:0, shake:0, flash:0, flashCol:"", deck:[], lastQ:null, gateNo:0,
-  camX:0, cardHideAt:-1, toastUntil:-1, attractIn:1.5
+  camX:0, cardHideAt:-1, toastUntil:-1, attractIn:1.5, set:BUILTIN, life:{}
 };
 const P = {x:0, lane:0, y:0, vy:0};
 
@@ -737,7 +836,7 @@ function spawnPattern(){
 }
 function nextQuestion(){
   if (!S.deck.length){
-    S.deck = shuffle(QUESTIONS.filter(q => saved.settings.domains[q.d]));
+    S.deck = shuffle(setPool(S.set));
     if (S.deck.length > 1 && S.deck[S.deck.length-1] === S.lastQ) S.deck.unshift(S.deck.pop());
   }
   return S.lastQ = S.deck.pop();
@@ -758,8 +857,9 @@ function spawnQuestion(){
 /* ---------- Card, toast, HUD ---------- */
 const card = $("qcard"), optLis = [...$("qOpts").children];
 function showCard(g){
-  $("qDomain").textContent = DOMAINS[g.q.d].label;
-  $("qDomain").style.setProperty("--dc", C["d-"+g.q.d]);
+  const ti = topicInfo(S.set, g.q.d);
+  $("qDomain").textContent = ti.label;
+  $("qDomain").style.setProperty("--dc", ti.color);
   $("qNum").textContent = "Gate " + S.gateNo;
   $("qText").textContent = g.q.q;
   optLis.forEach((li,i) => { li.className = ""; li.querySelector("span").textContent = g.opts[i].t; });
@@ -802,13 +902,14 @@ function renderHearts(){
 
 /* ---------- Game flow ---------- */
 function startRun(){
-  const st = saved.settings;
-  if (!QUESTIONS.some(q => st.domains[q.d])) return;
+  const st = saved.settings, set = activeSet();
+  if (!setPool(set).length) return;
+  S.set = set; S.life = lifeOf(set);
   Object.assign(S, {
     mode:"play", dist:0, runT:0, base:PACE[st.pace].speed, speed:PACE[st.pace].speed, points:0, coins:0,
     lives:3, streak:0, bestStreak:0, answered:0, correct:0, missed:[], objs:[], gate:null,
     qIn:PACE[st.pace].speed*1.6, obsIn:18, invuln:0, shake:0, flash:0, deck:[], gateNo:0, cardHideAt:-1, toastUntil:-1,
-    run:{sec:{c:0,t:0},res:{c:0,t:0},perf:{c:0,t:0},cost:{c:0,t:0}}
+    run:Object.fromEntries(set.topics.map(t => [t.id, {c:0,t:0}]))
   });
   Object.assign(P, {x:0, lane:0, y:0, vy:0});
   ["menu","over","paused","explain"].forEach(id => $(id).hidden = true);
@@ -820,13 +921,13 @@ function resolveGate(){
   const g = S.gate; S.gate = null;
   const li = P.lane + 1, pick = g.opts[li], q = g.q;
   g.chosen = li;
-  S.answered++; S.run[q.d].t++; saved.life[q.d].t++;
+  S.answered++; S.run[q.d].t++; S.life[q.d].t++;
   const ci = g.opts.findIndex(o => o.ok);
   optLis.forEach((el,i) => { el.classList.remove("active"); if (i === ci) el.classList.add("correct"); else if (i === li) el.classList.add("wrong"); });
   S.qIn = S.speed*(pick.ok ? 4.2 : 2.4);
   if (pick.ok){
     S.correct++; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
-    S.run[q.d].c++; saved.life[q.d].c++;
+    S.run[q.d].c++; S.life[q.d].c++;
     const m = mult(), pts = 100*m;
     S.points += pts;
     S.speed = Math.min(S.base + 9, S.speed + 0.35);
@@ -845,7 +946,7 @@ function resolveGate(){
 }
 function openExplain(q, picked){
   S.mode = "explain";
-  $("exDomain").textContent = DOMAINS[q.d].label + " · Gate " + S.gateNo;
+  $("exDomain").textContent = topicInfo(S.set, q.d).label + " · Gate " + S.gateNo;
   $("exQ").textContent = q.q;
   $("exPicked").textContent = picked;
   $("exRight").textContent = q.a;
@@ -885,16 +986,16 @@ function gameOver(){
   S.mode = "over";
   $("paused").hidden = true; $("explain").hidden = true;
   hideCard(); hideToast();
-  const sc = score(), isBest = sc > saved.best && sc > 0;
-  saved.best = Math.max(saved.best, sc); save();
+  const sc = score(), prev = saved.bestBySet[S.set.id] || 0, isBest = sc > prev && sc > 0;
+  saved.bestBySet[S.set.id] = Math.max(prev, sc); save();
   $("ovTitle").textContent = saved.settings.study ? "Study run complete" : "Run over";
   $("ovScore").textContent = sc.toLocaleString();
-  $("ovBest").textContent = isBest ? "New best score" : "Best " + saved.best.toLocaleString();
+  $("ovBest").textContent = isBest ? "New best score" : "Best " + saved.bestBySet[S.set.id].toLocaleString();
   $("ovGates").textContent = S.answered;
   $("ovAcc").textContent = S.answered ? Math.round(100*S.correct/S.answered) + "%" : "–";
   $("ovStreak").textContent = S.bestStreak;
   $("ovCoins").textContent = S.coins;
-  renderBars($("ovDomains"), S.run, "No gates reached in this run.");
+  renderBars($("ovDomains"), S.set, S.run, "No gates reached in this run.");
   const ul = $("ovMissed"); ul.innerHTML = "";
   if (!S.missed.length){
     const li = document.createElement("li"); li.className = "empty"; li.style.border = "0"; li.style.padding = "0";
@@ -904,7 +1005,7 @@ function gameOver(){
     for (const m of S.missed){
       const li = document.createElement("li");
       const add = (cls, txt) => { const d = document.createElement("div"); d.className = cls; d.textContent = txt; li.appendChild(d); };
-      const chip = document.createElement("span"); chip.className = "chip"; chip.style.setProperty("--dc", C["d-"+m.q.d]); chip.style.alignSelf = "flex-start"; chip.textContent = DOMAINS[m.q.d].label; li.appendChild(chip);
+      const chip = document.createElement("span"); chip.className = "chip"; const ti = topicInfo(S.set, m.q.d); chip.style.setProperty("--dc", ti.color); chip.style.alignSelf = "flex-start"; chip.textContent = ti.label; li.appendChild(chip);
       add("mq", m.q.q); add("mp", m.picked); add("ma", m.q.a); add("me", m.q.e);
       ul.appendChild(li);
     }
@@ -1024,46 +1125,260 @@ $("againBtn").addEventListener("click", startRun);
 $("menuBtn").addEventListener("click", toMenu);
 
 /* ---------- Menu ---------- */
-function renderBars(el, data, emptyText){
+function renderBars(el, set, data, emptyText){
   el.innerHTML = "";
-  const any = Object.values(data).some(v => v.t > 0);
+  const any = set.topics.some(t => data[t.id] && data[t.id].t > 0);
   if (!any){ const p = document.createElement("p"); p.className = "empty"; p.textContent = emptyText; el.appendChild(p); return; }
-  for (const d in DOMAINS){
-    const v = data[d], pct = v.t ? Math.round(100*v.c/v.t) : 0;
-    const row = document.createElement("div"); row.className = "bar"; row.style.setProperty("--dc", C["d-"+d]);
+  for (const t of set.topics){
+    const v = data[t.id] || {c:0,t:0}, pct = v.t ? Math.round(100*v.c/v.t) : 0;
+    const row = document.createElement("div"); row.className = "bar"; row.style.setProperty("--dc", topicInfo(set, t.id).color);
     row.innerHTML = `<span></span><div class="track"><div class="fill"></div></div><span class="v"></span>`;
-    row.children[0].textContent = DOMAINS[d].label;
+    row.children[0].textContent = t.label; row.children[0].title = t.label;
     row.querySelector(".fill").style.width = pct + "%";
     row.children[2].textContent = v.t ? `${v.c}/${v.t} · ${pct}%` : "–";
     el.appendChild(row);
   }
 }
-function renderMenu(){
-  const st = saved.settings, wrapEl = $("domainChips");
-  wrapEl.innerHTML = "";
-  for (const d in DOMAINS){
-    const n = QUESTIONS.filter(q => q.d === d).length;
+function renderSets(){
+  const el = $("setList"), current = activeSet();
+  el.innerHTML = "";
+  for (const set of [BUILTIN, ...saved.sets]){
+    const row = document.createElement("div"); row.className = "setrow";
     const b = document.createElement("button");
-    b.className = "toggle"; b.id = "dom-" + d; b.style.setProperty("--dc", C["d-"+d]);
-    b.setAttribute("aria-pressed", st.domains[d] ? "true" : "false");
+    b.className = "toggle"; b.id = "set-" + set.id;
+    b.setAttribute("aria-pressed", String(set.id === current.id));
+    b.innerHTML = `<span class="dot"></span><span class="t"></span><span class="n"></span>`;
+    b.children[1].textContent = set.title; b.title = set.builtin ? "Built-in questions" : "Made from " + set.source;
+    b.children[2].textContent = set.questions.length + " Qs";
+    b.addEventListener("click", () => { saved.activeSet = set.id; save(); renderMenu(); });
+    row.appendChild(b);
+    if (!set.builtin){
+      const d = document.createElement("button");
+      d.className = "del"; d.textContent = "Delete"; d.setAttribute("aria-label", "Delete " + set.title);
+      d.addEventListener("click", () => {
+        if (!d.classList.contains("confirm")){
+          d.classList.add("confirm"); d.textContent = "Delete?";
+          setTimeout(() => { d.classList.remove("confirm"); d.textContent = "Delete"; }, 3000);
+          return;
+        }
+        saved.sets = saved.sets.filter(x => x.id !== set.id);
+        delete saved.lifeBySet[set.id]; delete saved.bestBySet[set.id]; delete saved.settings.topicsBySet[set.id];
+        if (saved.activeSet === set.id) saved.activeSet = "saa";
+        save(); renderMenu();
+      });
+      row.appendChild(d);
+    }
+    el.appendChild(row);
+  }
+}
+function renderMenu(){
+  const st = saved.settings, set = activeSet(), on = topicOn(set), wrapEl = $("domainChips");
+  renderSets();
+  wrapEl.innerHTML = "";
+  set.topics.forEach(t => {
+    const n = set.questions.filter(q => q.d === t.id).length;
+    const b = document.createElement("button");
+    b.className = "toggle"; b.id = "dom-" + t.id; b.style.setProperty("--dc", topicInfo(set, t.id).color);
+    b.setAttribute("aria-pressed", on[t.id] !== false ? "true" : "false");
     b.innerHTML = `<span class="dot"></span><span></span><span class="n"></span>`;
-    b.children[1].textContent = DOMAINS[d].label + " " + DOMAINS[d].weight + "%";
+    b.children[1].textContent = t.label + (t.weight ? " " + t.weight + "%" : "");
     b.children[2].textContent = n + " Qs";
     b.addEventListener("click", () => {
-      const on = Object.values(st.domains).filter(Boolean).length;
-      if (st.domains[d] && on === 1){ $("domainHint").textContent = "Keep at least one domain on."; return; }
-      st.domains[d] = !st.domains[d]; save(); renderMenu();
+      const count = set.topics.filter(x => on[x.id] !== false).length;
+      if (on[t.id] !== false && count === 1){ $("domainHint").textContent = "Keep at least one topic on."; return; }
+      on[t.id] = on[t.id] === false; save(); renderMenu();
     });
     wrapEl.appendChild(b);
-  }
-  $("domainHint").textContent = "Weights are each domain's share of the real exam.";
+  });
+  $("topicsHead").textContent = set.builtin ? "Exam domains" : "Topics";
+  $("domainHint").textContent = set.builtin ? "Weights are each domain's share of the real exam." : "Made by Claude from " + set.source + ".";
   [...$("modeSeg").children].forEach(b => b.setAttribute("aria-pressed", String((b.dataset.mode === "study") === st.study)));
   [...$("paceSeg").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pace === st.pace)));
-  $("bestLine").textContent = saved.best ? "Best score " + saved.best.toLocaleString() : "";
-  renderBars($("lifeBars"), saved.life, "Your accuracy per domain shows up here after your first gate.");
+  const best = saved.bestBySet[set.id];
+  $("bestLine").textContent = best ? "Best score " + best.toLocaleString() : "";
+  renderBars($("lifeBars"), set, lifeOf(set), "Your accuracy per topic shows up here after your first gate.");
 }
 [...$("modeSeg").children].forEach(b => b.addEventListener("click", () => { saved.settings.study = b.dataset.mode === "study"; save(); renderMenu(); }));
 [...$("paceSeg").children].forEach(b => b.addEventListener("click", () => { saved.settings.pace = b.dataset.pace; save(); renderMenu(); }));
+
+/* ---------- Custom sets: Claude writes questions from a PDF ---------- */
+// The browser calls the Claude API directly with the player's own key (no server).
+const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.128.0/+esm";
+const GEN_MODEL = "claude-opus-5-5";
+const MAX_PDF_BYTES = 24*1024*1024; // base64 adds ~33%; the API caps a request at 32 MB
+const MAX_SETS = 8;
+const KEY_STORE = "azdash.apikey";
+const GEN_SCHEMA = {
+  type:"object", additionalProperties:false, required:["title","topics","questions"],
+  properties:{
+    title:{type:"string"},
+    topics:{type:"array", items:{type:"object", additionalProperties:false, required:["id","label"],
+      properties:{id:{type:"string"}, label:{type:"string"}}}},
+    questions:{type:"array", items:{type:"object", additionalProperties:false,
+      required:["topic","question","answer","wrong","explanation"],
+      properties:{topic:{type:"string"}, question:{type:"string"}, answer:{type:"string"},
+        wrong:{type:"array", items:{type:"string"}}, explanation:{type:"string"}}}}
+  }
+};
+const GEN_SYSTEM = `You write multiple-choice study questions for AZ Dash, an endless-runner game. A question appears on screen, then three gates roll toward the player, each showing one answer on a small sign. The player runs through the gate with the correct answer. Each gate shows the correct answer plus two of the three wrong answers, picked at random and shuffled.
+
+Write questions only from the material in the attached PDF. Test understanding and application, not trivia such as page numbers, figure labels or the author's name. Prefer short scenario questions ("A team needs X. What should they use?") where the material supports them; otherwise ask direct conceptual questions. Spread the questions across the whole document in proportion to how much it covers each subject, and don't ask the same thing twice in different words.
+
+The text has to fit the game's screen:
+- question: one or two sentences, at most about 170 characters.
+- answer: at most 32 characters (about 5 words). It goes on a gate sign, so use a term, name, value or short phrase, never a full sentence.
+- wrong: exactly 3 wrong answers. Each is plausible to someone who half-knows the material, the same kind of thing as the correct answer, similar in length, and clearly wrong according to the document. Never use "All of the above", "None of the above", or answers that refer to other options.
+- explanation: one or two sentences, at most about 200 characters, saying why the answer is right and, where useful, why a tempting wrong answer is wrong.
+
+Group the questions into 2 to 4 topics that reflect the document's main subjects. Give each topic an id ("t1", "t2", ...) and a label of 1 or 2 words, at most 16 characters. Every question's topic must be one of those ids.
+
+title: a short name for the question set, at most 28 characters, based on the document's subject.
+
+Write in the same language as the document.`;
+
+class GenError extends Error {}
+let genStream = null, genSdk = null, genRunning = false, genCancelled = false;
+const mb = n => (n/1048576).toFixed(n < 10485760 ? 1 : 0) + " MB";
+const cleanText = v => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+
+function genStatus(text, kind){
+  $("genStatusWrap").hidden = false;
+  const p = $("genStatus"); p.textContent = text; p.className = kind || "";
+}
+function genProgress(f){ $("genBar").style.transform = `scaleX(${Math.max(0.02, Math.min(1, f))})`; }
+function genBusy(on){
+  ["genPick","genKey","genRemember","genCount","genFocus"].forEach(id => $(id).disabled = on);
+  $("genGo").textContent = on ? "Cancel" : "Generate questions";
+}
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1] || "");
+    r.onerror = () => reject(new GenError("Couldn't read that file. Choose it again."));
+    r.readAsDataURL(file);
+  });
+}
+function genErrorText(e){
+  if (e instanceof GenError) return e.message;
+  const sdk = genSdk;
+  if (sdk){
+    const detail = (e && e.error && e.error.error && e.error.error.message) || (e && e.message) || "";
+    if (e instanceof sdk.APIUserAbortError) return "Cancelled.";
+    if (e instanceof sdk.AuthenticationError) return "Anthropic rejected that API key. Check it and try again.";
+    if (e instanceof sdk.PermissionDeniedError) return "This API key isn't allowed to use " + GEN_MODEL + ". " + detail;
+    if (e instanceof sdk.RateLimitError) return "Rate or spend limit reached on your API account. Wait a minute and try again, or check your limits in the Anthropic Console.";
+    if (e instanceof sdk.BadRequestError) return "Anthropic couldn't process this request: " + detail;
+    if (e instanceof sdk.APIConnectionError) return "Couldn't reach Anthropic's API. Check your connection and try again.";
+    if (e instanceof sdk.APIError) return `Anthropic API error${e.status ? " (" + e.status + ")" : ""}: ${detail}`;
+  }
+  if (e instanceof SyntaxError) return "Claude's reply wasn't valid JSON. Try again.";
+  return "Something went wrong: " + ((e && e.message) || e);
+}
+function buildSet(o, fileName){
+  const topics = (Array.isArray(o.topics) ? o.topics : [])
+    .filter(t => t && cleanText(t.id) && cleanText(t.label)).slice(0, 4)
+    .map((t, i) => ({id:"t" + (i+1), src:cleanText(t.id), label:cleanText(t.label).slice(0, 18)}));
+  if (!topics.length) topics.push({id:"t1", src:"", label:"General"});
+  const byId = new Map(topics.map(t => [t.src, t.id]));
+  const seen = new Set(), questions = [];
+  for (const r of (Array.isArray(o.questions) ? o.questions : [])){
+    if (!r) continue;
+    const q = cleanText(r.question), a = cleanText(r.answer), e = cleanText(r.explanation);
+    const w = [...new Set((Array.isArray(r.wrong) ? r.wrong : []).map(cleanText))]
+      .filter(x => x && x.toLowerCase() !== a.toLowerCase()).slice(0, 3);
+    if (!q || !a || w.length < 2 || seen.has(q.toLowerCase())) continue;
+    seen.add(q.toLowerCase());
+    questions.push({d:byId.get(cleanText(r.topic)) || topics[0].id, q, a, w, e});
+  }
+  if (questions.length < 3) throw new GenError("Claude couldn't write enough usable questions from this PDF. Try a PDF with more study material in it.");
+  const used = new Set(questions.map(q => q.d));
+  return {
+    id:"c" + Date.now().toString(36), title:cleanText(o.title).slice(0, 40) || fileName.replace(/\.pdf$/i, ""),
+    source:fileName, created:Date.now(),
+    topics:topics.filter(t => used.has(t.id)).map(({id, label}) => ({id, label})), questions
+  };
+}
+async function generateSet(){
+  const file = $("genFile").files[0], key = $("genKey").value.trim();
+  const n = +$("genCount").value || 70, focus = cleanText($("genFocus").value);
+  $("genPlay").hidden = true;
+  if (!file) return genStatus("Choose a PDF first.", "err");
+  if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) return genStatus("That file isn't a PDF. Choose a .pdf file.", "err");
+  if (file.size > MAX_PDF_BYTES) return genStatus(`That PDF is ${mb(file.size)}. The limit is 24 MB, so split it or export fewer pages.`, "err");
+  if (!key) return genStatus("Paste your Anthropic API key first.", "err");
+  try { if ($("genRemember").checked) localStorage.setItem(KEY_STORE, key); else localStorage.removeItem(KEY_STORE); } catch(e){}
+
+  genRunning = true; genCancelled = false;
+  genBusy(true); genProgress(0); genStatus("Loading…");
+  let tick = null;
+  try {
+    genSdk = genSdk || await import(SDK_URL).catch(() => { throw new GenError("Couldn't load the Claude client from cdn.jsdelivr.net. Check your connection or ad blocker."); });
+    const data = await fileToBase64(file);
+    if (genCancelled) throw new GenError("Cancelled.");
+    const client = new genSdk.default({apiKey:key, dangerouslyAllowBrowser:true});
+    const started = performance.now();
+    let text = "", count = 0;
+    genStream = client.beta.messages.stream({
+      model:GEN_MODEL,
+      max_tokens:64000,
+      // If a safety classifier declines, the API retries on its recommended fallback model.
+      betas:["server-side-fallback-2026-07-01"],
+      fallbacks:"default",
+      output_config:{effort:"high", format:{type:"json_schema", schema:GEN_SCHEMA}},
+      system:GEN_SYSTEM,
+      messages:[{role:"user", content:[
+        {type:"document", source:{type:"base64", media_type:"application/pdf", data}, title:file.name},
+        {type:"text", text:`Write exactly ${n} questions from this document.` + (focus ? `\n\nFocus: ${focus}` : "")}
+      ]}]
+    });
+    genStream.on("text", delta => { text += delta; count = (text.match(/"question"\s*:/g) || []).length; });
+    const show = () => {
+      const secs = Math.round((performance.now() - started)/1000);
+      genProgress(count/n);
+      genStatus(count ? `Writing question ${Math.min(count, n)} of ${n}… ${secs}s` : `Claude is reading the PDF… ${secs}s`);
+    };
+    show(); tick = setInterval(show, 500);
+    const msg = await genStream.finalMessage();
+    if (msg.stop_reason === "refusal") throw new GenError("Claude declined to write questions from this document.");
+    if (msg.stop_reason === "max_tokens") throw new GenError("The reply ran out of room before it finished. Ask for fewer questions and try again.");
+    // After a fallback, only the text following the last fallback block belongs to the final answer.
+    let start = 0;
+    msg.content.forEach((b, i) => { if (b.type === "fallback") start = i + 1; });
+    const raw = msg.content.slice(start).filter(b => b.type === "text").map(b => b.text).join("");
+    const set = buildSet(JSON.parse(raw), file.name);
+    saved.sets.unshift(set);
+    saved.sets = saved.sets.slice(0, MAX_SETS);
+    saved.activeSet = set.id;
+    save();
+    genProgress(1);
+    genStatus(`Made ${set.questions.length} questions in ${set.topics.length} ${set.topics.length === 1 ? "topic" : "topics"}: ${set.topics.map(t => t.label).join(", ")}. Saved as “${set.title}”.`, "ok");
+    $("genPlay").hidden = false; $("genPlay").focus();
+  } catch(e){
+    genStatus(genErrorText(e), "err");
+  } finally {
+    clearInterval(tick); genStream = null; genRunning = false; genBusy(false);
+  }
+}
+function openGen(){
+  $("menu").hidden = true; $("gen").hidden = false; $("genPlay").hidden = true;
+  if (!genRunning) $("genStatusWrap").hidden = true;
+  try { const k = localStorage.getItem(KEY_STORE); if (k && !$("genKey").value){ $("genKey").value = k; $("genRemember").checked = true; } } catch(e){}
+  $("genPick").focus();
+}
+function cancelGen(){ genCancelled = true; if (genStream) genStream.abort(); }
+function closeGen(){
+  if (genRunning) cancelGen();
+  $("gen").hidden = true; renderMenu(); $("menu").hidden = false; $("newSetBtn").focus();
+}
+$("newSetBtn").addEventListener("click", openGen);
+$("genBack").addEventListener("click", closeGen);
+$("genPick").addEventListener("click", () => $("genFile").click());
+$("genFile").addEventListener("change", () => {
+  const f = $("genFile").files[0];
+  $("genFileName").textContent = f ? `${f.name} · ${mb(f.size)}` : "No file chosen · up to 24 MB";
+});
+$("genGo").addEventListener("click", () => { if (genRunning) cancelGen(); else generateSet(); });
+$("genPlay").addEventListener("click", () => { $("gen").hidden = true; startRun(); });
 
 /* ---------- Boot ---------- */
 resize();
