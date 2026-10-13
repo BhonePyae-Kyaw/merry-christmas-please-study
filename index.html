@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="AZ Dash: a Subway Surfers-style endless runner for AWS SAA-C03 practice.">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>AZ Dash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bungee&display=swap">
+<style>
+:root{
+  /* Layout: full-bleed canvas runner at dusk; HUD strip on top, question card pinned beneath it with its 3 answers laid out like the 3 lanes; sticker-style modal cards centered. Single deliberate dark world. */
+  --night:#151c3d;
+  --dusk:#4a3470;
+  --glow:#f39a6b;
+  --ground:#1f1a33;
+  --gravel:#3a3150;
+  --tie:#7a5b4a;
+  --rail:#c9cbe0;
+  --rack:#2a2f52;
+  --rack-top:#3b4170;
+  --rack-side:#1d2140;
+  --led:#5ff2c9;
+  --paper:#fff3dc;
+  --ink:#16172b;
+  --signal:#ffc53d;
+  --go:#2fd492;
+  --stop:#ff4f5e;
+  --hoodie:#3cc6d6;
+  --skin:#f1c6a2;
+  --pants:#2c3870;
+  --block:#c8384a;
+  --block-top:#e0566a;
+  --block-side:#8e2333;
+  --skyline:#2f2557;
+  --muted:#5f5a78;
+  --d-sec:#ff7a59;
+  --d-res:#3cc6d6;
+  --d-perf:#b48cff;
+  --d-cost:#9be15d;
+  --display:"Bungee","Arial Black",Impact,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--night);color:var(--paper);font-family:var(--body);font-size:15px;overflow:hidden}
+#app{position:relative;height:100%;overflow:hidden;user-select:none;-webkit-user-select:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* HUD */
+.hud{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;pointer-events:none}
+.hud-l,.hud-r{display:flex;align-items:center;gap:14px}
+.score{font-family:var(--display);font-size:clamp(22px,4vw,30px);line-height:1;color:var(--paper);text-shadow:3px 3px 0 var(--ink);font-variant-numeric:tabular-nums}
+.mult{font-family:var(--display);font-size:15px;color:var(--ink);background:var(--signal);border:2px solid var(--ink);border-radius:8px;padding:3px 7px;box-shadow:2px 2px 0 var(--ink)}
+.mult[data-x="1"]{opacity:.55}
+.credits{font-family:var(--display);font-size:15px;color:var(--signal);text-shadow:2px 2px 0 var(--ink);font-variant-numeric:tabular-nums}
+.hearts{font-size:20px;letter-spacing:2px;color:var(--stop);text-shadow:2px 2px 0 var(--ink)}
+.hearts .lost{color:var(--muted)}
+.iconbtn{pointer-events:auto;font-family:var(--display);font-size:14px;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:9px;width:36px;height:36px;box-shadow:2px 2px 0 var(--ink);cursor:pointer}
+
+/* Question card */
+.qcard{position:absolute;z-index:2;top:58px;left:50%;transform:translateX(-50%);width:min(720px,calc(100% - 32px));background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:16px;box-shadow:6px 6px 0 var(--ink);padding:12px 14px 12px;pointer-events:none;transition:opacity .35s,transform .35s}
+.qcard.out{opacity:0;transform:translate(-50%,-12px)}
+.qmeta{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.chip{font-family:var(--display);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--dc,var(--signal));border:2px solid var(--ink);border-radius:999px;padding:2px 9px}
+.qnum{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.timer{flex:1;height:8px;border:2px solid var(--ink);border-radius:99px;overflow:hidden;background:var(--paper)}
+.timer i{display:block;height:100%;width:100%;background:var(--ink);transform-origin:left;transition:background .2s}
+.timer.hot i{background:var(--stop)}
+.qtext{margin:0 0 10px;font-size:clamp(14px,2.1vw,17px);line-height:1.38;font-weight:700;text-wrap:pretty}
+.opts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.opts li{min-width:0;border:2px solid var(--ink);border-radius:10px;padding:6px 8px 7px;font-size:clamp(12px,1.8vw,14.5px);line-height:1.25;background:var(--paper);display:flex;flex-direction:column;gap:3px;transition:background .15s,transform .15s}
+.opts li b{font-family:var(--display);font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.opts li.active{background:var(--signal);transform:translateY(-2px);box-shadow:0 3px 0 var(--ink)}
+.opts li.active b{color:var(--ink)}
+.opts li.correct{background:var(--go)}
+.opts li.wrong{background:var(--stop);color:var(--paper)}
+.opts li.wrong b{color:var(--paper)}
+
+/* Toast */
+.toast{position:absolute;z-index:4;top:58px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--paper);border:3px solid var(--go);border-radius:14px;padding:10px 14px;pointer-events:none;display:flex;flex-direction:column;gap:3px;box-shadow:5px 5px 0 rgba(0,0,0,.35)}
+.toast strong{font-family:var(--display);font-size:14px;color:var(--go);letter-spacing:.04em}
+.toast span{font-size:13.5px;line-height:1.4}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding-inline:16px;padding-block:16px;background:rgba(21,28,61,.55)}
+.overlay.clear{background:linear-gradient(rgba(21,28,61,.15),rgba(21,28,61,.6))}
+.panel{width:100%;max-width:560px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto;background:var(--paper);color:var(--ink);border:3px solid var(--ink);border-radius:20px;box-shadow:8px 8px 0 var(--ink);padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;user-select:text;-webkit-user-select:text}
+.panel-wide{max-width:640px}
+.panel h2,.panel h3{margin:0;text-wrap:balance}
+.panel h2{font-family:var(--display);font-size:24px;line-height:1.1;font-weight:400}
+.panel h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel p{margin:0;line-height:1.5}
+.eyebrow{font-family:var(--display);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.logo{font-family:var(--display);font-size:clamp(44px,11vw,64px);line-height:.9;color:var(--signal);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 var(--ink);margin:0;font-weight:400;letter-spacing:.01em}
+.logo small{display:block;font-size:.3em;color:var(--ink);-webkit-text-stroke:0;text-shadow:none;letter-spacing:.12em;margin-top:8px}
+.lede{font-size:15px;max-width:52ch}
+.group{display:flex;flex-direction:column;gap:7px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.toggle{font-family:var(--body);font-size:13.5px;font-weight:700;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:7px 11px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.toggle .dot{width:11px;height:11px;border-radius:50%;border:2px solid var(--ink);background:transparent}
+.toggle[aria-pressed="true"]{background:var(--dc,var(--signal));box-shadow:2px 2px 0 var(--ink)}
+.toggle[aria-pressed="true"] .dot{background:var(--ink)}
+.toggle .n{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+.toggle[aria-pressed="true"] .n{color:var(--ink)}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.hint{font-size:12.5px;color:var(--muted)}
+.btn{font-family:var(--display);font-size:16px;letter-spacing:.03em;color:var(--ink);background:var(--paper);border:3px solid var(--ink);border-radius:12px;padding:11px 18px;cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn.primary{background:var(--signal)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+button:focus-visible{outline:3px solid var(--hoodie);outline-offset:3px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px;align-items:center}
+kbd{font-family:var(--body);font-weight:700;font-size:11.5px;border:2px solid var(--ink);border-bottom-width:3px;border-radius:6px;padding:1px 6px;background:var(--paper);white-space:nowrap}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:96px 1fr 64px;gap:10px;align-items:center;font-size:13px}
+.bar .track{height:12px;border:2px solid var(--ink);border-radius:99px;overflow:hidden;background:var(--paper)}
+.bar .fill{height:100%;background:var(--dc)}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ex-q{font-weight:700}
+.ans{border:2px solid var(--ink);border-radius:12px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.ans span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.ans b{font-size:16px}
+.ans-wrong{background:var(--stop);color:var(--paper)}
+.ans-right{background:var(--go)}
+.final{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.big{font-family:var(--display);font-size:clamp(40px,10vw,56px);line-height:1;color:var(--signal);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 var(--ink);font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0}
+.stats div{border:2px solid var(--ink);border-radius:10px;padding:7px 9px}
+.stats dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.stats dd{margin:0;font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums}
+.missed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.missed li{border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:13.5px;line-height:1.45}
+.missed .mq{font-weight:700}
+.missed .ma{color:var(--ink)}
+.missed .ma::before{content:"✓ ";color:#14935f;font-weight:700}
+.missed .mp{color:#b3263a}
+.missed .mp::before{content:"✗ ";font-weight:700}
+.missed .me{color:var(--muted)}
+.empty{font-size:13.5px;color:var(--muted)}
+.fine{font-size:11.5px;color:var(--muted)}
+@media (max-width:520px){
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bar{grid-template-columns:80px 1fr 56px}
+  .qcard{padding:10px 10px 10px;top:54px}
+  .opts{gap:6px}
+  .opts li{padding:5px 6px 6px}
+  .panel{padding:18px 16px 16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .qcard,.btn,.opts li{transition:none}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="game" aria-label="AZ Dash game view"></canvas>
+
+  <div class="hud" id="hud" hidden>
+    <div class="hud-l">
+      <span class="score" id="score">0</span>
+      <span class="mult" id="mult" data-x="1">×1</span>
+    </div>
+    <div class="hud-r">
+      <span class="credits" id="credits">◎ 0</span>
+      <span class="hearts" id="hearts" aria-label="Lives"></span>
+      <button class="iconbtn" id="pauseBtn" aria-label="Pause">II</button>
+    </div>
+  </div>
+
+  <section class="qcard out" id="qcard" hidden aria-live="polite">
+    <div class="qmeta">
+      <span class="chip" id="qDomain">Security</span>
+      <span class="qnum" id="qNum">Gate 1</span>
+      <div class="timer" id="qTimerWrap"><i id="qTimer"></i></div>
+    </div>
+    <p class="qtext" id="qText"></p>
+    <ol class="opts" id="qOpts">
+      <li data-lane="0"><b>← 1a</b><span></span></li>
+      <li data-lane="1"><b>1b</b><span></span></li>
+      <li data-lane="2"><b>1c →</b><span></span></li>
+    </ol>
+  </section>
+
+  <div class="toast" id="toast" hidden><strong id="toastHead"></strong><span id="toastBody"></span></div>
+
+  <!-- Menu -->
+  <div class="overlay clear" id="menu">
+    <div class="panel" role="dialog" aria-labelledby="menuTitle">
+      <h1 class="logo" id="menuTitle">AZ Dash<small>SAA-C03 endless runner</small></h1>
+      <p class="lede">A question rolls in. Three gates follow, one per Availability Zone lane. Switch lanes, dodge the throttling, and run through the right answer before you reach it.</p>
+
+      <div class="group">
+        <h3>Exam domains</h3>
+        <div class="chips" id="domainChips"></div>
+        <p class="hint" id="domainHint">Weights are the share of the real exam.</p>
+      </div>
+
+      <div class="group">
+        <h3>Mode</h3>
+        <div class="seg" id="modeSeg">
+          <button class="toggle" data-mode="runner" aria-pressed="true"><span class="dot"></span>Runner · 3 lives, obstacles</button>
+          <button class="toggle" data-mode="study" aria-pressed="false"><span class="dot"></span>Study · no obstacles, no lives</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Reading time</h3>
+        <div class="seg" id="paceSeg">
+          <button class="toggle" data-pace="chill" aria-pressed="false"><span class="dot"></span>Chill</button>
+          <button class="toggle" data-pace="normal" aria-pressed="true"><span class="dot"></span>Normal</button>
+          <button class="toggle" data-pace="fast" aria-pressed="false"><span class="dot"></span>Exam day</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <button class="btn primary" id="startBtn">Start run</button>
+        <span class="hint" id="bestLine"></span>
+      </div>
+
+      <div class="group">
+        <h3>Controls</h3>
+        <div class="keys">
+          <span><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></span><span>Switch lane (or <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>)</span>
+          <span><kbd>↑</kbd> <kbd>Space</kbd></span><span>Jump the 503 hurdles</span>
+          <span><kbd>↓</kbd></span><span>Drop fast</span>
+          <span><kbd>P</kbd> <kbd>Esc</kbd></span><span>Pause</span>
+          <span>Phone</span><span>Swipe, or tap the left / right side</span>
+        </div>
+        <p class="hint">Red 429 blocks can’t be jumped. Change lanes.</p>
+      </div>
+
+      <div class="group">
+        <h3>Your accuracy, all runs</h3>
+        <div class="bars" id="lifeBars"></div>
+      </div>
+      <p class="fine">Unofficial practice questions written for study. Not affiliated with AWS.</p>
+    </div>
+  </div>
+
+  <!-- Wrong answer -->
+  <div class="overlay" id="explain" hidden>
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="exTitle">
+      <p class="eyebrow" id="exDomain"></p>
+      <h2 id="exTitle">Wrong lane</h2>
+      <p class="ex-q" id="exQ"></p>
+      <div class="ans ans-wrong"><span>You ran through</span><b id="exPicked"></b></div>
+      <div class="ans ans-right"><span>Correct answer</span><b id="exRight"></b></div>
+      <p id="exE"></p>
+      <div class="row">
+        <button class="btn primary" id="exGo">Keep running</button>
+        <span class="hint" id="exLives"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div class="overlay" id="paused" hidden>
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+      <h2 id="pTitle">Paused</h2>
+      <p id="pLine"></p>
+      <div class="row">
+        <button class="btn primary" id="resumeBtn">Resume</button>
+        <button class="btn" id="endBtn">End run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="overlay" id="over" hidden>
+    <div class="panel panel-wide" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+      <p class="eyebrow" id="ovTitle">Run over</p>
+      <div class="final"><span class="big" id="ovScore">0</span><span class="hint" id="ovBest"></span></div>
+      <dl class="stats">
+        <div><dt>Gates</dt><dd id="ovGates">0</dd></div>
+        <div><dt>Accuracy</dt><dd id="ovAcc">–</dd></div>
+        <div><dt>Best streak</dt><dd id="ovStreak">0</dd></div>
+        <div><dt>Credits</dt><dd id="ovCoins">0</dd></div>
+      </dl>
+      <div class="group">
+        <h3>This run by domain</h3>
+        <div class="bars" id="ovDomains"></div>
+      </div>
+      <div class="group">
+        <h3 id="ovMissedH">Review your misses</h3>
+        <ol class="missed" id="ovMissed"></ol>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="againBtn">Run again</button>
+        <button class="btn" id="menuBtn">Change setup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- Question bank (SAA-C03 domains) ---------- */
+const QUESTIONS = [
+  // Secure
+  {d:"sec",q:"An app on EC2 must read objects from S3. What is the most secure way to give it credentials?",a:"IAM role (instance profile)",w:["Access keys in env vars","Access keys in user data","Root account access keys"],e:"Roles hand the instance temporary credentials that rotate automatically. Never store long-term keys on an instance."},
+  {d:"sec",q:"No account in your AWS Organization should be able to stop CloudTrail, not even its root user.",a:"Service control policy",w:["IAM permissions boundary","S3 bucket policy","AWS Config rule"],e:"SCPs cap the maximum permissions for every principal in member accounts, including the root user."},
+  {d:"sec",q:"Encrypt S3 objects with keys you manage, and audit every use of those keys in CloudTrail.",a:"SSE-KMS",w:["SSE-S3","S3 Object Lock","S3 Versioning"],e:"SSE-KMS logs each key use to CloudTrail and gives you key policies and rotation control."},
+  {d:"sec",q:"Store RDS database credentials and rotate them automatically on a schedule.",a:"AWS Secrets Manager",w:["SSM Parameter Store (standard)","Lambda environment variables","Encrypted file in S3"],e:"Secrets Manager has built-in rotation for RDS credentials. Parameter Store has no native rotation."},
+  {d:"sec",q:"Protect a public Application Load Balancer from SQL injection and cross-site scripting.",a:"AWS WAF",w:["Security groups","Network ACLs","AWS Shield Standard"],e:"WAF inspects layer-7 HTTP requests with managed rules for SQLi and XSS. SGs and NACLs only see layers 3–4."},
+  {d:"sec",q:"Block one malicious IP range from reaching any instance in a subnet.",a:"Network ACL deny rule",w:["Security group deny rule","IAM policy","Route table entry"],e:"Security groups can only allow. Network ACLs support explicit deny rules at the subnet boundary."},
+  {d:"sec",q:"Instances in a private subnet must reach S3 without traffic going over the internet.",a:"S3 gateway VPC endpoint",w:["NAT gateway","Internet gateway","Egress-only internet gateway"],e:"A gateway endpoint routes S3 and DynamoDB traffic privately through the route table, with no hourly charge."},
+  {d:"sec",q:"Detect crypto-mining and compromised credentials by analyzing VPC Flow Logs, DNS logs and CloudTrail.",a:"Amazon GuardDuty",w:["Amazon Inspector","Amazon Macie","AWS Config"],e:"GuardDuty is ML threat detection over those log sources. Inspector scans for vulnerabilities; Macie finds sensitive data."},
+  {d:"sec",q:"Find buckets that contain personally identifiable information (PII).",a:"Amazon Macie",w:["Amazon GuardDuty","Amazon Inspector","Amazon Detective"],e:"Macie uses machine learning and pattern matching to discover and classify sensitive data in S3."},
+  {d:"sec",q:"Mobile users sign in with Google, then upload photos straight to S3 with scoped access.",a:"Cognito identity pool",w:["One IAM user per customer","Public S3 bucket","Shared access keys in the app"],e:"Identity pools exchange an identity provider token for temporary, scoped AWS credentials."},
+  {d:"sec",q:"A partner's AWS account needs access to your resources. You must not share long-term keys.",a:"Cross-account IAM role",w:["IAM user for the partner","Share root credentials","Make the bucket public"],e:"The partner assumes a role with a trust policy (ideally with an external ID) and gets temporary credentials."},
+  {d:"sec",q:"An S3 bucket must only serve content through CloudFront, never by direct URL.",a:"Origin access control (OAC)",w:["Make the bucket public","S3 Transfer Acceleration","S3 static website endpoint"],e:"With OAC, CloudFront signs requests to S3 and the bucket policy allows only that distribution."},
+  {d:"sec",q:"Records must be write-once (WORM) for 7 years. Nobody, including root, may delete them early.",a:"Object Lock, compliance mode",w:["Object Lock, governance mode","Versioning only","MFA Delete"],e:"Compliance mode blocks every user, root included, from deleting or shortening retention. Governance mode can be bypassed with permission."},
+  {d:"sec",q:"Serve HTTPS on a public ALB with a free certificate that renews itself.",a:"ACM certificate on the ALB",w:["Self-signed cert on EC2","KMS key on the ALB","AWS CloudHSM"],e:"ACM issues public TLS certificates at no cost and renews them automatically when attached to ALB or CloudFront."},
+  {d:"sec",q:"Give employees one sign-in to many AWS accounts in your organization.",a:"IAM Identity Center",w:["IAM users in each account","Cognito user pool","A shared admin login"],e:"IAM Identity Center (formerly AWS SSO) maps permission sets to accounts across AWS Organizations."},
+  {d:"sec",q:"Large DDoS attacks are expected. You want a 24/7 response team and protection from scaling costs.",a:"AWS Shield Advanced",w:["AWS Shield Standard","AWS WAF only","Amazon GuardDuty"],e:"Shield Advanced adds the Shield Response Team, attack diagnostics, and cost protection for DDoS-driven scaling."},
+  {d:"sec",q:"Track how security group settings change over time and flag non-compliant ones.",a:"AWS Config",w:["CloudWatch metrics","Trusted Advisor","VPC Flow Logs"],e:"Config records configuration history for resources and evaluates them against rules. CloudTrail records API calls, not resource state."},
+  {d:"sec",q:"Someone terminated a production EC2 instance yesterday. Find out who.",a:"AWS CloudTrail",w:["CloudWatch metrics","VPC Flow Logs","AWS X-Ray"],e:"CloudTrail logs every API call with the identity, time and source IP that made it."},
+  {d:"sec",q:"Developers may create IAM roles, but those roles must never exceed a set of permissions.",a:"Permissions boundary",w:["Resource-based policy","Session tags","Access Analyzer"],e:"A permissions boundary caps what identity policies can grant, so you can delegate role creation safely."},
+  {d:"sec",q:"Compliance requires single-tenant HSMs where only you control the keys.",a:"AWS CloudHSM",w:["KMS AWS managed keys","AWS Secrets Manager","AWS Certificate Manager"],e:"CloudHSM gives you dedicated HSMs in your VPC. AWS has no access to your key material."},
+
+  // Resilient
+  {d:"res",q:"An RDS database must survive an Availability Zone failure with automatic failover.",a:"RDS Multi-AZ",w:["Read replica in the same AZ","Automated backups only","A larger instance class"],e:"Multi-AZ keeps a synchronous standby in another AZ and fails over to it automatically."},
+  {d:"res",q:"Traffic spikes make the order-processing tier drop orders. Decouple it from the web tier.",a:"Amazon SQS queue",w:["Bigger EC2 instances","Route 53 weighted routing","Elastic IP addresses"],e:"SQS stores messages durably, so workers consume at their own pace and nothing is lost during spikes."},
+  {d:"res",q:"One order event must reach three separate SQS queues for parallel processing.",a:"SNS topic fanning out to SQS",w:["One shared SQS queue","SQS long polling","SQS delay queue"],e:"SNS publishes each message to every subscribed queue. This is the classic fan-out pattern."},
+  {d:"res",q:"Messages must be processed in order and exactly once.",a:"SQS FIFO queue",w:["SQS standard queue","SNS standard topic","Amazon Data Firehose"],e:"FIFO queues guarantee ordering and exactly-once processing within a message group."},
+  {d:"res",q:"When the primary ALB fails health checks, send users to a static backup site on S3.",a:"Route 53 failover routing",w:["Weighted routing","Latency routing","Geolocation routing"],e:"Failover routing uses health checks to switch DNS answers to the secondary record."},
+  {d:"res",q:"A relational database needs cross-Region DR with an RPO of about a second and RTO under a minute.",a:"Aurora Global Database",w:["RDS Multi-AZ","Snapshots copied cross-Region","Same-Region read replica"],e:"Aurora Global Database replicates with typically under 1 second of lag and can promote a secondary Region in under a minute."},
+  {d:"res",q:"DR plan: keep only the core database replicating; launch app servers only during a disaster.",a:"Pilot light",w:["Warm standby","Multi-site active/active","Hot standby"],e:"Pilot light keeps core data live and starts compute on demand. Backup and restore is cheaper but much slower to recover."},
+  {d:"res",q:"A web fleet must replace unhealthy instances on its own and survive losing an AZ.",a:"Multi-AZ Auto Scaling group",w:["One very large instance","Cluster placement group","Elastic IP failover script"],e:"Auto Scaling groups health-check instances, replace failures, and balance capacity across AZs."},
+  {d:"res",q:"Some SQS messages keep failing in Lambda. Set them aside for inspection without blocking others.",a:"Dead-letter queue",w:["Delete after 3 retries","More Lambda memory","SNS retry policy"],e:"After maxReceiveCount attempts, SQS moves the message to the DLQ so you can inspect and redrive it."},
+  {d:"res",q:"Protect S3 data from accidental overwrites and deletes.",a:"Enable S3 Versioning",w:["S3 Transfer Acceleration","S3 Intelligent-Tiering","Requester Pays"],e:"Versioning keeps every version of an object. A delete only adds a delete marker you can remove."},
+  {d:"res",q:"New S3 objects must be copied automatically to a bucket in another Region for DR.",a:"S3 Cross-Region Replication",w:["S3 Transfer Acceleration","CloudFront caching","S3 Lifecycle rule"],e:"CRR asynchronously replicates new objects to another Region. Both buckets need versioning enabled."},
+  {d:"res",q:"Coordinate a multi-step order workflow with retries, branching and a human approval step.",a:"AWS Step Functions",w:["SQS standard queue","One long-running Lambda","EventBridge cron rule"],e:"Step Functions orchestrates states with built-in retries, branching and wait-for-callback tasks."},
+  {d:"res",q:"Linux instances in several AZs need one shared POSIX file system.",a:"Amazon EFS",w:["EBS gp3 volume","Instance store","Mount an S3 bucket"],e:"EFS is a Regional NFS file system across AZs. EBS volumes live in a single AZ."},
+  {d:"res",q:"Centrally schedule and retain backups for EBS, RDS, DynamoDB and EFS.",a:"AWS Backup",w:["Custom cron scripts","S3 Replication","Data Lifecycle Manager only"],e:"AWS Backup manages backup plans, retention and cross-Region or cross-account copies across services."},
+  {d:"res",q:"A multiplayer game uses UDP. It needs static IPs and fast failover between Regions.",a:"AWS Global Accelerator",w:["Amazon CloudFront","Route 53 simple routing","Application Load Balancer"],e:"Global Accelerator gives two static anycast IPs, supports TCP and UDP, and fails over between Regions in seconds."},
+
+  // High-performing
+  {d:"perf",q:"Reporting queries are slowing a busy RDS MySQL database. Offload the reads.",a:"RDS read replicas",w:["Multi-AZ standby","Larger EBS volume","S3 Transfer Acceleration"],e:"Read replicas serve read traffic asynchronously. A classic Multi-AZ standby cannot serve reads."},
+  {d:"perf",q:"A DynamoDB table needs microsecond read latency without changing application logic.",a:"DynamoDB Accelerator (DAX)",w:["ElastiCache for Redis","DynamoDB global tables","RDS read replicas"],e:"DAX is an in-memory cache built for DynamoDB with an API-compatible client. ElastiCache needs app changes."},
+  {d:"perf",q:"Cache user sessions and frequent query results with sub-millisecond latency.",a:"Amazon ElastiCache",w:["S3 Standard","Amazon EFS","RDS snapshots"],e:"ElastiCache (Redis OSS, Valkey or Memcached) keeps hot data in memory."},
+  {d:"perf",q:"Serve images and video to users worldwide with low latency.",a:"Amazon CloudFront",w:["Bigger EC2 instances","RDS Multi-AZ","S3 Lifecycle rules"],e:"CloudFront caches content at edge locations close to viewers."},
+  {d:"perf",q:"Users on other continents upload large files to one S3 bucket and it is slow.",a:"S3 Transfer Acceleration",w:["CloudFront signed URLs","S3 Intelligent-Tiering","S3 Object Lock"],e:"Transfer Acceleration routes uploads through the nearest edge location and over the AWS backbone."},
+  {d:"perf",q:"An HPC job needs the lowest latency and highest throughput between instances.",a:"Cluster placement group",w:["Spread placement group","Partition placement group","Instances in two Regions"],e:"A cluster group packs instances close together in one AZ. Spread groups maximize isolation instead."},
+  {d:"perf",q:"A critical database needs consistent high IOPS and the most durable EBS volume.",a:"Provisioned IOPS SSD (io2)",w:["General Purpose SSD (gp2)","Throughput HDD (st1)","Cold HDD (sc1)"],e:"io2 delivers provisioned, consistent IOPS and 99.999% durability. st1 and sc1 are HDD for throughput."},
+  {d:"perf",q:"Log processing reads big files sequentially every day. Cheapest EBS that keeps up?",a:"Throughput Optimized HDD (st1)",w:["Cold HDD (sc1)","Provisioned IOPS SSD (io2)","Instance store only"],e:"st1 is low-cost HDD for frequent, large sequential reads. sc1 suits data accessed rarely."},
+  {d:"perf",q:"Ingest real-time clickstream; several consumers must be able to read and replay the data.",a:"Kinesis Data Streams",w:["SQS standard queue","Amazon Data Firehose","SNS topic"],e:"Kinesis Data Streams retains records from 24 hours up to 365 days, so many consumers can read and replay."},
+  {d:"perf",q:"Load streaming data into S3 and Redshift with no code and no capacity to manage.",a:"Amazon Data Firehose",w:["Kinesis Data Streams","EC2 consumer fleet","SQS FIFO queue"],e:"Firehose is fully managed delivery with buffering, optional transforms and automatic scaling."},
+  {d:"perf",q:"Run ad-hoc SQL directly on log files in S3 with no servers to manage.",a:"Amazon Athena",w:["RDS for MySQL","Amazon EMR cluster","Amazon DynamoDB"],e:"Athena is serverless SQL over S3. You pay per amount of data scanned."},
+  {d:"perf",q:"Route /api requests and /images requests to different target groups.",a:"Application Load Balancer",w:["Network Load Balancer","Gateway Load Balancer","Route 53 latency routing"],e:"ALB routes at layer 7 on path, host and headers. NLB works at layer 4."},
+  {d:"perf",q:"A TCP service needs millions of requests per second, ultra-low latency and a static IP per AZ.",a:"Network Load Balancer",w:["Application Load Balancer","Amazon CloudFront","Classic Load Balancer"],e:"NLB operates at layer 4, scales to millions of requests per second, and supports Elastic IPs."},
+  {d:"perf",q:"Bursts of Lambda invocations exhaust the connection limit on an RDS database.",a:"Amazon RDS Proxy",w:["Bigger RDS instance","Add a read replica","DynamoDB Accelerator"],e:"RDS Proxy pools and reuses database connections, absorbing Lambda bursts."},
+  {d:"perf",q:"Key-value lookups need single-digit millisecond latency at any scale, fully serverless.",a:"Amazon DynamoDB",w:["Amazon Aurora","Amazon Redshift","Amazon Neptune"],e:"DynamoDB is serverless NoSQL with consistent single-digit millisecond performance."},
+  {d:"perf",q:"Analysts run complex SQL over petabytes of historical data.",a:"Amazon Redshift",w:["Amazon DynamoDB","RDS for PostgreSQL","Amazon ElastiCache"],e:"Redshift is a columnar, massively parallel data warehouse built for analytics (OLAP)."},
+  {d:"perf",q:"Traffic jumps every weekday at 9 AM. Add capacity before the spike arrives.",a:"Scheduled scaling",w:["Simple scaling","Manual scaling","Lifecycle hooks"],e:"Scheduled actions change capacity at known times. Predictive scaling can also learn daily patterns."},
+  {d:"perf",q:"Keep an Auto Scaling group's average CPU near 50% at all times.",a:"Target tracking policy",w:["Scheduled scaling","Simple scaling","Instance refresh"],e:"Target tracking adds and removes instances to hold a metric at its target, like a thermostat."},
+  {d:"perf",q:"An HPC workload needs a very fast parallel file system linked to data in S3.",a:"Amazon FSx for Lustre",w:["Amazon EFS","FSx for Windows File Server","S3 Glacier"],e:"FSx for Lustre delivers sub-millisecond latency and huge throughput, and can import from and export to S3."},
+  {d:"perf",q:"Windows servers need SMB file shares joined to Active Directory.",a:"FSx for Windows File Server",w:["Amazon EFS","FSx for Lustre","EBS Multi-Attach"],e:"FSx for Windows provides native SMB, NTFS and Active Directory integration. EFS is NFS for Linux."},
+
+  // Cost-optimized
+  {d:"cost",q:"Steady 24/7 compute for 3 years. You want the discount to follow you across instance families and Regions.",a:"Compute Savings Plan",w:["EC2 Instance Savings Plan","Spot Instances","On-Demand Instances"],e:"Compute Savings Plans apply across family, size, Region and OS, and also cover Fargate and Lambda."},
+  {d:"cost",q:"Fault-tolerant batch jobs can be interrupted at any time. Lowest cost?",a:"Spot Instances",w:["Reserved Instances","Dedicated Hosts","On-Demand Instances"],e:"Spot is up to 90% off On-Demand but can be reclaimed with a two-minute warning."},
+  {d:"cost",q:"Access patterns for S3 data are unknown and keep changing. Cut storage cost automatically.",a:"S3 Intelligent-Tiering",w:["S3 Standard","S3 One Zone-IA","S3 Glacier Deep Archive"],e:"Intelligent-Tiering moves objects between access tiers for you, with no retrieval fees."},
+  {d:"cost",q:"Compliance archives are read about once a year. Retrieval within 12 hours is fine. Cheapest storage?",a:"S3 Glacier Deep Archive",w:["S3 Standard-IA","S3 Glacier Instant Retrieval","S3 Intelligent-Tiering"],e:"Deep Archive is the lowest-cost S3 class. Standard retrieval completes within 12 hours."},
+  {d:"cost",q:"Infrequently accessed thumbnails can be regenerated if lost. Cheapest infrequent-access class?",a:"S3 One Zone-IA",w:["S3 Standard","S3 Standard-IA","S3 Express One Zone"],e:"One Zone-IA costs about 20% less than Standard-IA, but the data lives in a single AZ."},
+  {d:"cost",q:"Private instances send heavy traffic to DynamoDB through a NAT gateway. Cut the data charges.",a:"DynamoDB gateway endpoint",w:["A larger NAT gateway","An internet gateway","AWS Direct Connect"],e:"Gateway endpoints for S3 and DynamoDB are free and remove NAT data-processing charges."},
+  {d:"cost",q:"Move logs to Glacier after 90 days and delete them after one year, automatically.",a:"S3 Lifecycle configuration",w:["S3 Replication","S3 Intelligent-Tiering","Daily Lambda cleanup job"],e:"Lifecycle rules transition and expire objects on a schedule with no code to run."},
+  {d:"cost",q:"Get an alert when this month's spend is forecast to go over $500.",a:"AWS Budgets",w:["Cost Explorer","Trusted Advisor","AWS CloudTrail"],e:"Budgets alerts on actual or forecasted cost and usage thresholds."},
+  {d:"cost",q:"Code runs for a few seconds per request, traffic is irregular, and idle time should cost nothing.",a:"AWS Lambda",w:["EC2 Reserved Instance","Always-on ECS on EC2","EC2 Dedicated Host"],e:"Lambda bills per request and per millisecond of duration. Idle costs nothing."},
+  {d:"cost",q:"Your software license is priced per physical socket and core (BYOL).",a:"EC2 Dedicated Hosts",w:["Dedicated Instances","Spot Instances","Compute Savings Plan"],e:"Dedicated Hosts expose sockets and cores for per-core licensing. Dedicated Instances do not give host visibility."},
+  {d:"cost",q:"A DynamoDB table gets spiky, unpredictable traffic with long idle stretches.",a:"On-demand capacity mode",w:["Provisioned, no auto scaling","Reserved capacity","Add a DAX cluster"],e:"On-demand mode bills per request and scales instantly, which suits unknown or spiky workloads."},
+  {d:"cost",q:"Move 500 TB into AWS within weeks over a slow internet link.",a:"AWS Snowball Edge",w:["Site-to-Site VPN","S3 Transfer Acceleration","Multipart upload over internet"],e:"Snowball devices ship the data physically, far faster than weeks of saturating a slow link."},
+  {d:"cost",q:"Find over-provisioned EC2 instances and get right-sizing recommendations.",a:"AWS Compute Optimizer",w:["AWS Config","AWS CloudTrail","Amazon GuardDuty"],e:"Compute Optimizer analyzes utilization metrics with ML and recommends better-fitting instance types."},
+  {d:"cost",q:"Run containers without managing servers, paying only for the vCPU and memory used.",a:"AWS Fargate",w:["ECS on Reserved Instances","EKS on Dedicated Hosts","Self-managed Docker on EC2"],e:"Fargate is serverless compute for ECS and EKS, billed per vCPU and GB of memory per second."},
+  {d:"cost",q:"An Aurora database sits idle most of the day, with occasional bursts.",a:"Aurora Serverless v2",w:["Provisioned Aurora r-class","RDS Multi-AZ cluster","Amazon Redshift"],e:"Aurora Serverless v2 scales capacity in fine-grained ACUs to match the load."}
+];
+
+const DOMAINS = {
+  sec:{label:"Security",weight:30},
+  res:{label:"Resilience",weight:26},
+  perf:{label:"Performance",weight:24},
+  cost:{label:"Cost",weight:20}
+};
+const PACE = {
+  chill:{speed:11,read:1.4},
+  normal:{speed:14,read:1.0},
+  fast:{speed:18,read:0.75}
+};
+const LANE_W = 2.4, TRACK_HALF = LANE_W*1.5 + 1.0, Z_FAR = 170, GRAV = 34, JUMP_V = 12.5;
+const LANES = ["1a","1b","1c"];
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const $ = id => document.getElementById(id);
+const canvas = $("game"), ctx = canvas.getContext("2d");
+const cs = getComputedStyle(document.documentElement);
+const tok = n => cs.getPropertyValue(n).trim();
+const C = {};
+["night","dusk","glow","ground","gravel","tie","rail","rack","rack-top","rack-side","led","paper","ink","signal","go","stop","hoodie","skin","pants","block","block-top","block-side","skyline","muted","d-sec","d-res","d-perf","d-cost"].forEach(n => C[n] = tok("--"+n));
+const DISPLAY = '"Bungee","Arial Black",Impact,sans-serif';
+const BODY = '"Atkinson Hyperlegible",system-ui,sans-serif';
+
+/* ---------- Storage (per-browser convenience only) ---------- */
+const KEY = "azdash.v1";
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch(e){} }
+const saved = load();
+saved.best = saved.best || 0;
+saved.life = saved.life || {};
+for (const d in DOMAINS) saved.life[d] = saved.life[d] || {c:0,t:0};
+saved.settings = Object.assign({study:false,pace:"normal"}, saved.settings || {});
+saved.settings.domains = Object.assign({sec:true,res:true,perf:true,cost:true}, saved.settings.domains || {});
+if (!PACE[saved.settings.pace]) saved.settings.pace = "normal";
+
+/* ---------- State ---------- */
+const S = {
+  mode:"menu", clock:0, dist:0, runT:0, speed:10, base:14, points:0, coins:0, lives:3,
+  streak:0, bestStreak:0, answered:0, correct:0, run:{}, missed:[], objs:[], gate:null,
+  qIn:0, obsIn:0, invuln:0, shake:0, flash:0, flashCol:"", deck:[], lastQ:null, gateNo:0,
+  camX:0, cardHideAt:-1, toastUntil:-1, attractIn:1.5
+};
+const P = {x:0, lane:0, y:0, vy:0};
+
+/* ---------- Helpers ---------- */
+const rand = (a,b) => a + Math.random()*(b-a);
+const ri = n => Math.floor(Math.random()*n);
+function shuffle(a){ a = a.slice(); for (let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const laneX = l => l*LANE_W;
+const mult = () => Math.min(5, 1 + Math.floor(S.streak/3));
+const score = () => S.points + S.coins*10 + Math.floor(S.dist/5);
+
+/* ---------- Projection ---------- */
+let W=0, H=0, F=1, HZ=0, CAM_H=3.2;
+const CAM_D = 5.5;
+function resize(){
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = canvas.clientWidth; H = canvas.clientHeight;
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  CAM_H = H > W*1.1 ? 4.6 : 3.2;
+  const Fw = (W*0.5*0.98) * CAM_D / TRACK_HALF;
+  const Fh = H*0.47*CAM_D/CAM_H;
+  F = Math.min(Fw, Fh);
+  HZ = H*0.9 - CAM_H*F/CAM_D;
+}
+function proj(x,y,z){ const s = F/(z + CAM_D); return {x: W/2 + (x - S.camX)*s, y: HZ + (CAM_H - y)*s, s}; }
+const Z_NEAR = -CAM_D + 0.7;
+function fog(z){ const s = Z_FAR*0.6; return z <= s ? 1 : Math.max(0, 1 - (z - s)/(Z_FAR - s)); }
+
+function quad(a,b,c,d,fill){ ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.lineTo(c.x,c.y); ctx.lineTo(d.x,d.y); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); }
+function box(x0,x1,y0,y1,z0,z1,cf,ct,cside){
+  if (z0 < Z_NEAR) return null;
+  if (x1 < S.camX) quad(proj(x1,y0,z0),proj(x1,y1,z0),proj(x1,y1,z1),proj(x1,y0,z1),cside);
+  if (x0 > S.camX) quad(proj(x0,y0,z0),proj(x0,y1,z0),proj(x0,y1,z1),proj(x0,y0,z1),cside);
+  if (y1 < CAM_H) quad(proj(x0,y1,z0),proj(x1,y1,z0),proj(x1,y1,z1),proj(x0,y1,z1),ct);
+  const a = proj(x0,y1,z0), b = proj(x1,y0,z0);
+  ctx.fillStyle = cf; ctx.fillRect(a.x,a.y,b.x-a.x,b.y-a.y);
+  return {x:a.x, y:a.y, w:b.x-a.x, h:b.y-a.y, s:a.s};
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function wrap(text, maxW){
+  const words = text.split(" "), lines = []; let line = "";
+  for (const w of words){ const t = line ? line + " " + w : w; if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line); return lines;
+}
+
+/* ---------- Scenery ---------- */
+const clouds = Array.from({length:7}, (_,i) => ({x:Math.random(), y:0.12 + Math.random()*0.5, s:0.6 + Math.random()*0.9, v:0.4 + Math.random()*0.8}));
+const skyline = (() => { const b = []; let x = -0.05; while (x < 1.05){ const w = 0.018 + Math.random()*0.045; b.push({x, w, h:0.03 + Math.random()*0.1, lit:Math.random()}); x += w + Math.random()*0.006; } return b; })();
+
+function drawSky(){
+  const g = ctx.createLinearGradient(0,0,0,HZ);
+  g.addColorStop(0, C.night); g.addColorStop(0.6, C.dusk); g.addColorStop(1, C.glow);
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,HZ+1);
+  // clouds
+  ctx.fillStyle = C.paper;
+  for (const c of clouds){
+    const span = W*1.5;
+    const x = ((c.x*span + S.clock*c.v*14) % span) - W*0.25 - S.camX*2;
+    const y = c.y*HZ, r = Math.max(10, Math.min(W,H)*0.035)*c.s;
+    ctx.globalAlpha = 0.09 + c.y*0.08;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 7); ctx.arc(x + r*1.1, y - r*0.35, r*1.2, 0, 7); ctx.arc(x + r*2.2, y, r*0.9, 0, 7);
+    ctx.fill();
+    ctx.fillRect(x, y, r*2.2, r);
+  }
+  ctx.globalAlpha = 1;
+  // skyline
+  const shift = -S.camX*4;
+  ctx.fillStyle = C.skyline;
+  for (const b of skyline){
+    const h = b.h*Math.max(HZ, H*0.4);
+    ctx.fillRect(b.x*W + shift, HZ - h, b.w*W + 1, h + 1);
+  }
+  ctx.fillStyle = C.signal; ctx.globalAlpha = 0.55;
+  for (const b of skyline){
+    if (b.lit < 0.55) continue;
+    const h = b.h*Math.max(HZ, H*0.4), bw = b.w*W;
+    for (let k=0;k<3;k++){ const wx = b.x*W + shift + bw*(0.2 + 0.3*k), wy = HZ - h*(0.3 + ((b.lit*10 + k)%3)*0.2); ctx.fillRect(wx, wy, 2, 2); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawGround(){
+  const g = ctx.createLinearGradient(0,HZ,0,H);
+  g.addColorStop(0, C.dusk); g.addColorStop(0.15, C.ground); g.addColorStop(1, C.ground);
+  ctx.fillStyle = g; ctx.fillRect(0,HZ,W,H-HZ);
+  // track bed
+  quad(proj(-TRACK_HALF,0,Z_FAR), proj(TRACK_HALF,0,Z_FAR), proj(TRACK_HALF,0,Z_NEAR), proj(-TRACK_HALF,0,Z_NEAR), C.gravel);
+  // ties
+  const TIE = 2.0, off = S.dist % TIE;
+  for (let z = Math.floor(Z_FAR*0.85/TIE)*TIE - off; z > Z_NEAR; z -= TIE){
+    ctx.globalAlpha = fog(z);
+    for (let l=-1;l<=1;l++){
+      const x = laneX(l);
+      quad(proj(x-1.05,0,z+0.45), proj(x+1.05,0,z+0.45), proj(x+1.05,0,z), proj(x-1.05,0,z), C.tie);
+    }
+  }
+  ctx.globalAlpha = 1;
+  // rails
+  for (let l=-1;l<=1;l++){
+    for (const side of [-0.72, 0.72]){
+      const x = laneX(l) + side;
+      quad(proj(x-0.07,0.06,Z_FAR), proj(x+0.07,0.06,Z_FAR), proj(x+0.07,0.06,Z_NEAR), proj(x-0.07,0.06,Z_NEAR), C.rail);
+    }
+  }
+  // horizon haze
+  const hz = ctx.createLinearGradient(0,HZ,0,HZ + (H-HZ)*0.18);
+  hz.addColorStop(0, C.glow); hz.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.globalAlpha = 0.55; ctx.fillStyle = hz; ctx.fillRect(0,HZ,W,(H-HZ)*0.18); ctx.globalAlpha = 1;
+}
+
+function drawRacks(){
+  const SP = 18, off = S.dist % SP;
+  const xs = [-(TRACK_HALF+1.1), TRACK_HALF+0.1];
+  for (let z = Math.floor(Z_FAR/SP)*SP - off; z > Z_NEAR; z -= SP){
+    const f = fog(z); if (f <= 0) continue;
+    ctx.globalAlpha = f;
+    const k = Math.round((z + S.dist)/SP);
+    for (let i=0;i<2;i++){
+      const r = box(xs[i], xs[i]+1.0, 0, 4.4, z, z+1.0, C.rack, C["rack-top"], C["rack-side"]);
+      if (!r || r.w < 3) continue;
+      // LED rows
+      for (let row=0; row<6; row++){
+        for (let c=0;c<3;c++){
+          const on = ((k*7 + row*3 + c + i*5 + Math.floor(S.clock*3)) % 5) < 2;
+          ctx.fillStyle = on ? C.led : C["rack-side"];
+          const lw = r.w*0.12, lh = Math.max(1, r.h*0.022);
+          ctx.fillRect(r.x + r.w*(0.18 + c*0.26), r.y + r.h*(0.1 + row*0.13), lw, lh);
+        }
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- Objects ---------- */
+function drawCoin(o){
+  const p = proj(laneX(o.lane), o.y + Math.sin(S.clock*4 + o.z*0.3)*0.08, o.z);
+  const r = 0.36*p.s; if (r < 0.6) return;
+  const sx = Math.max(0.15, Math.abs(Math.cos(S.clock*4 + o.z*0.2)));
+  ctx.fillStyle = C.ink;
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, r*sx + 1.5, r + 1.5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = C.signal;
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, r*sx, r, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = C.paper; ctx.lineWidth = Math.max(1, r*0.14); ctx.globalAlpha *= 0.8;
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, r*sx*0.58, r*0.58, 0, 0, 7); ctx.stroke();
+}
+
+function drawBarrier(o){
+  const x = laneX(o.lane), z = o.z;
+  box(x-1.0, x-0.86, 0, 0.6, z+0.05, z+0.2, C.rail, C.rail, C.muted);
+  box(x+0.86, x+1.0, 0, 0.6, z+0.05, z+0.2, C.rail, C.rail, C.muted);
+  const r = box(x-1.08, x+1.08, 0.55, 1.08, z, z+0.25, C.signal, C.paper, C.muted);
+  if (!r) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+  ctx.fillStyle = C.ink;
+  const step = r.w/6;
+  for (let i=-1;i<7;i+=2){ ctx.beginPath(); ctx.moveTo(r.x+i*step, r.y+r.h); ctx.lineTo(r.x+(i+0.6)*step, r.y+r.h); ctx.lineTo(r.x+(i+1.6)*step, r.y); ctx.lineTo(r.x+(i+1)*step, r.y); ctx.fill(); }
+  ctx.restore();
+  if (r.h > 9){
+    const fs = r.h*0.62;
+    ctx.fillStyle = C.paper; const tw = fs*2.2;
+    rr(r.x + r.w/2 - tw/2, r.y + r.h*0.12, tw, r.h*0.76, r.h*0.15); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.font = `${fs}px ${DISPLAY}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("503", r.x + r.w/2, r.y + r.h/2 + fs*0.05);
+  }
+}
+
+function drawBlock(o){
+  const x = laneX(o.lane);
+  const r = box(x-1.08, x+1.08, 0, 2.9, o.z, o.z+2.4, C.block, C["block-top"], C["block-side"]);
+  if (!r || r.w < 6) return;
+  ctx.strokeStyle = C.ink; ctx.lineWidth = Math.max(1, r.w*0.025);
+  ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = C.paper; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `${r.w*0.3}px ${DISPLAY}`; ctx.fillText("429", r.x + r.w/2, r.y + r.h*0.42);
+  if (r.w > 50){ ctx.font = `${r.w*0.085}px ${DISPLAY}`; ctx.fillText("THROTTLED", r.x + r.w/2, r.y + r.h*0.64); }
+}
+
+function drawGate(g){
+  const z = g.z; if (z > Z_FAR || z < Z_NEAR) return;
+  // floor line
+  ctx.globalAlpha *= 0.9;
+  quad(proj(-TRACK_HALF+0.4,0.02,z+0.35), proj(TRACK_HALF-0.4,0.02,z+0.35), proj(TRACK_HALF-0.4,0.02,z), proj(-TRACK_HALF+0.4,0.02,z), C.signal);
+  // posts
+  for (const k of [-1.5,-0.5,0.5,1.5]){ const x = k*LANE_W; box(x-0.13, x+0.13, 0, 4.7, z, z+0.26, C.paper, C.rail, C.muted); }
+  box(-1.5*LANE_W-0.13, 1.5*LANE_W+0.13, 4.45, 4.7, z, z+0.26, C.paper, C.rail, C.muted);
+  const correctIdx = g.opts.findIndex(o => o.ok);
+  for (let i=0;i<3;i++){
+    const cx = laneX(i-1);
+    const a = proj(cx - LANE_W/2 + 0.2, 4.35, z), b = proj(cx + LANE_W/2 - 0.2, 2.55, z);
+    const w = b.x - a.x, h = b.y - a.y; if (w < 3) continue;
+    let bg = C.paper, fg = C.ink;
+    if (g.chosen != null){
+      if (i === correctIdx){ bg = C.go; }
+      else if (i === g.chosen){ bg = C.stop; fg = C.paper; }
+    } else if (i === P.lane + 1){ bg = C.signal; }
+    ctx.fillStyle = C.ink; rr(a.x - 2, a.y - 2, w + 4, h + 4, Math.min(10, w*0.06)); ctx.fill();
+    ctx.fillStyle = bg; rr(a.x, a.y, w, h, Math.min(8, w*0.05)); ctx.fill();
+    if (w < 22) continue;
+    ctx.fillStyle = fg; ctx.textAlign = "left"; ctx.textBaseline = "top";
+    const tag = Math.max(6, w*0.075);
+    ctx.font = `${tag}px ${DISPLAY}`; ctx.globalAlpha *= 0.7;
+    ctx.fillText(LANES[i], a.x + w*0.06, a.y + h*0.07);
+    ctx.globalAlpha /= 0.7;
+    let fs = w*0.115, lines;
+    for (let t=0;t<6;t++){
+      ctx.font = `700 ${fs}px ${BODY}`;
+      lines = wrap(g.opts[i].t, w*0.86);
+      if (lines.length*fs*1.15 <= h*0.66) break;
+      fs *= 0.88;
+    }
+    if (fs < 4) continue;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const lh = fs*1.15, top = a.y + h*0.6 - (lines.length-1)*lh/2;
+    lines.forEach((ln,j) => ctx.fillText(ln, a.x + w/2, top + j*lh));
+  }
+}
+
+function drawObj(o){
+  const f = fog(o.z); if (f <= 0) return;
+  ctx.globalAlpha = f;
+  if (o.type === "coin") drawCoin(o);
+  else if (o.type === "barrier") drawBarrier(o);
+  else if (o.type === "block") drawBlock(o);
+  else if (o.type === "gate") drawGate(o);
+  ctx.globalAlpha = 1;
+}
+
+function drawPlayer(){
+  const b = proj(P.x, P.y, 0), g = proj(P.x, 0, 0), s = b.s;
+  const sh = Math.max(0.3, 1 - P.y/3);
+  ctx.globalAlpha = 0.4*sh; ctx.fillStyle = C.ink;
+  ctx.beginPath(); ctx.ellipse(g.x, g.y, 0.55*s*sh, 0.15*s*sh, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = (S.invuln > 0 && Math.floor(S.clock*14) % 2) ? 0.35 : 1;
+  const running = S.mode === "play" || S.mode === "menu";
+  const ph = S.runT*13, air = P.y > 0.02;
+  const bob = (running && !air) ? Math.abs(Math.sin(ph))*0.06 : 0;
+  const lean = (laneX(P.lane) - P.x)*0.09;
+  ctx.save(); ctx.translate(b.x, b.y); ctx.scale(s, s); ctx.translate(0, -bob); ctx.rotate(lean);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const lf = air ? 0.34 : Math.max(0, Math.sin(ph))*0.34, rf = air ? 0.22 : Math.max(0, -Math.sin(ph))*0.34;
+  const line = (x0,y0,x1,y1) => { ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke(); };
+  ctx.strokeStyle = C.pants; ctx.lineWidth = 0.21;
+  line(-0.13,-0.8,-0.16,-0.1-lf); line(0.13,-0.8,0.16,-0.1-rf);
+  ctx.fillStyle = C.paper;
+  ctx.beginPath(); ctx.ellipse(-0.16,-0.06-lf,0.14,0.08,0,0,7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0.16,-0.06-rf,0.14,0.08,0,0,7); ctx.fill();
+  const as = air ? -0.28 : Math.sin(ph)*0.15;
+  ctx.strokeStyle = C.hoodie; ctx.lineWidth = 0.16;
+  line(-0.3,-1.3,-0.48,-0.98+as); line(0.3,-1.3,0.48,-0.98-as);
+  ctx.fillStyle = C.skin;
+  ctx.beginPath(); ctx.arc(-0.48,-0.98+as,0.08,0,7); ctx.arc(0.48,-0.98-as,0.08,0,7); ctx.fill();
+  ctx.fillStyle = C.hoodie; rr(-0.34,-1.48,0.68,0.74,0.2); ctx.fill();
+  ctx.fillStyle = C.signal; rr(-0.24,-1.38,0.48,0.5,0.11); ctx.fill();
+  ctx.fillStyle = C.ink; rr(-0.13,-1.2,0.26,0.12,0.04); ctx.fill();
+  ctx.fillStyle = C.skin; ctx.beginPath(); ctx.arc(-0.2,-1.66,0.06,0,7); ctx.arc(0.2,-1.66,0.06,0,7); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(0,-1.67,0.2,0,7); ctx.fill();
+  ctx.fillStyle = C.stop; ctx.beginPath(); ctx.arc(0,-1.72,0.215,Math.PI,0); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function draw(){
+  ctx.save();
+  if (S.shake > 0){ const m = S.shake*22; ctx.translate((Math.random()-0.5)*m, (Math.random()-0.5)*m); }
+  drawSky(); drawGround(); drawRacks();
+  const objs = S.objs.slice().sort((a,b) => b.z - a.z);
+  for (const o of objs) if (o.z > 0) drawObj(o);
+  drawPlayer();
+  for (const o of objs) if (o.z <= 0) drawObj(o);
+  ctx.restore();
+  if (S.flash > 0 && !RM){ ctx.globalAlpha = Math.min(0.4, S.flash*0.6); ctx.fillStyle = S.flashCol; ctx.fillRect(0,0,W,H); ctx.globalAlpha = 1; }
+}
+
+/* ---------- Spawning ---------- */
+function gateZone(z){ return S.gate && z > S.gate.z - 30 && z < S.gate.z + 12; }
+function spawnCoins(lane, z0, overBarrierZ){
+  for (let i=0;i<5;i++){
+    const z = z0 + (i-2)*3;
+    let y = 1.0;
+    if (overBarrierZ != null){ const d = Math.abs(z - overBarrierZ); if (d < 5) y = 1.0 + (1 - d/5)*1.6; }
+    S.objs.push({type:"coin", lane, z, pz:z, y});
+  }
+}
+function spawnPattern(){
+  const z = Z_FAR;
+  if (gateZone(z) || gateZone(z+8) || gateZone(z-8)) return;
+  if (saved.settings.study || S.mode === "menu"){
+    if (Math.random() < 0.7) spawnCoins(ri(3)-1, z);
+    return;
+  }
+  const r = Math.random(), blocked = new Set();
+  let barrierLane = null;
+  if (r < 0.32){ barrierLane = ri(3)-1; S.objs.push({type:"barrier", lane:barrierLane, z, pz:z}); }
+  else if (r < 0.6){ const l = ri(3)-1; blocked.add(l); S.objs.push({type:"block", lane:l, z, pz:z}); }
+  else if (r < 0.82){ const free = ri(3)-1; for (let l=-1;l<=1;l++) if (l !== free){ blocked.add(l); S.objs.push({type:"block", lane:l, z, pz:z}); } }
+  else { for (let l=-1;l<=1;l++) S.objs.push({type:"barrier", lane:l, z, pz:z}); barrierLane = 0; }
+  if (Math.random() < 0.6){
+    const open = [-1,0,1].filter(l => !blocked.has(l));
+    const l = open[ri(open.length)];
+    spawnCoins(l, z + 1, (barrierLane === l || r >= 0.82) ? z : null);
+  }
+}
+function nextQuestion(){
+  if (!S.deck.length){
+    S.deck = shuffle(QUESTIONS.filter(q => saved.settings.domains[q.d]));
+    if (S.deck.length > 1 && S.deck[S.deck.length-1] === S.lastQ) S.deck.unshift(S.deck.pop());
+  }
+  return S.lastQ = S.deck.pop();
+}
+function spawnQuestion(){
+  const q = nextQuestion();
+  const opts = shuffle([{t:q.a, ok:true}, ...shuffle(q.w).slice(0,2).map(t => ({t, ok:false}))]);
+  const words = (q.q + " " + opts.map(o => o.t).join(" ")).split(/\s+/).length;
+  const read = (3.2 + words*0.2)*PACE[saved.settings.pace].read;
+  const z = S.speed*read;
+  S.objs = S.objs.filter(o => o.type === "coin" || !(o.z > z - 30 && o.z < z + 12));
+  S.gate = {type:"gate", z, pz:z, z0:z, q, opts, chosen:null};
+  S.objs.push(S.gate);
+  S.gateNo++;
+  showCard(S.gate);
+}
+
+/* ---------- Card, toast, HUD ---------- */
+const card = $("qcard"), optLis = [...$("qOpts").children];
+function showCard(g){
+  $("qDomain").textContent = DOMAINS[g.q.d].label;
+  $("qDomain").style.setProperty("--dc", C["d-"+g.q.d]);
+  $("qNum").textContent = "Gate " + S.gateNo;
+  $("qText").textContent = g.q.q;
+  optLis.forEach((li,i) => { li.className = ""; li.querySelector("span").textContent = g.opts[i].t; });
+  $("qTimerWrap").classList.remove("hot");
+  hideToast();
+  card.hidden = false;
+  requestAnimationFrame(() => card.classList.remove("out"));
+  S.cardHideAt = -1;
+}
+function hideCard(){ card.classList.add("out"); setTimeout(() => { if (card.classList.contains("out")) card.hidden = true; }, 360); }
+function updateCard(){
+  if (card.hidden) return;
+  if (S.gate){
+    const f = Math.max(0, S.gate.z/S.gate.z0);
+    $("qTimer").style.transform = `scaleX(${f})`;
+    $("qTimerWrap").classList.toggle("hot", S.gate.z/S.speed < 2.2);
+    optLis.forEach((li,i) => li.classList.toggle("active", i === P.lane + 1));
+  }
+  if (S.cardHideAt > 0 && S.runT > S.cardHideAt){ S.cardHideAt = -1; hideCard(); }
+}
+function toast(head, body){
+  $("toastHead").textContent = head; $("toastBody").textContent = body;
+  $("toast").hidden = false; S.toastUntil = S.runT + 3.6;
+}
+function hideToast(){ $("toast").hidden = true; S.toastUntil = -1; }
+let lastScore = -1;
+function updateHud(){
+  const sc = score();
+  if (sc !== lastScore){ $("score").textContent = sc.toLocaleString(); lastScore = sc; }
+  const m = mult(); $("mult").textContent = "×" + m; $("mult").dataset.x = m;
+  $("credits").textContent = "◎ " + S.coins;
+}
+function renderHearts(){
+  const h = $("hearts");
+  if (saved.settings.study){ h.textContent = "∞"; h.setAttribute("aria-label","Study mode, unlimited lives"); return; }
+  h.innerHTML = "";
+  for (let i=0;i<3;i++){ const sp = document.createElement("span"); sp.textContent = "♥"; if (i >= S.lives) sp.className = "lost"; h.appendChild(sp); }
+  h.setAttribute("aria-label", S.lives + " lives left");
+}
+
+/* ---------- Game flow ---------- */
+function startRun(){
+  const st = saved.settings;
+  if (!QUESTIONS.some(q => st.domains[q.d])) return;
+  Object.assign(S, {
+    mode:"play", dist:0, runT:0, base:PACE[st.pace].speed, speed:PACE[st.pace].speed, points:0, coins:0,
+    lives:3, streak:0, bestStreak:0, answered:0, correct:0, missed:[], objs:[], gate:null,
+    qIn:PACE[st.pace].speed*1.6, obsIn:18, invuln:0, shake:0, flash:0, deck:[], gateNo:0, cardHideAt:-1, toastUntil:-1,
+    run:{sec:{c:0,t:0},res:{c:0,t:0},perf:{c:0,t:0},cost:{c:0,t:0}}
+  });
+  Object.assign(P, {x:0, lane:0, y:0, vy:0});
+  ["menu","over","paused","explain"].forEach(id => $(id).hidden = true);
+  card.hidden = true; card.classList.add("out"); hideToast();
+  $("hud").hidden = false; renderHearts(); lastScore = -1; updateHud();
+  if (document.activeElement) document.activeElement.blur();
+}
+function resolveGate(){
+  const g = S.gate; S.gate = null;
+  const li = P.lane + 1, pick = g.opts[li], q = g.q;
+  g.chosen = li;
+  S.answered++; S.run[q.d].t++; saved.life[q.d].t++;
+  const ci = g.opts.findIndex(o => o.ok);
+  optLis.forEach((el,i) => { el.classList.remove("active"); if (i === ci) el.classList.add("correct"); else if (i === li) el.classList.add("wrong"); });
+  S.qIn = S.speed*(pick.ok ? 4.2 : 2.4);
+  if (pick.ok){
+    S.correct++; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
+    S.run[q.d].c++; saved.life[q.d].c++;
+    const m = mult(), pts = 100*m;
+    S.points += pts;
+    S.speed = Math.min(S.base + 9, S.speed + 0.35);
+    S.flash = 0.35; S.flashCol = C.go;
+    S.cardHideAt = S.runT + 0.9;
+    setTimeout(() => { if (S.mode === "play") toast(`Correct  +${pts}${m > 1 ? "  ×" + m : ""}`, `${q.a}. ${q.e}`); }, 900);
+  } else {
+    S.streak = 0;
+    if (!saved.settings.study) S.lives--;
+    renderHearts();
+    S.missed.push({q, picked:pick.t});
+    S.flash = 0.4; S.flashCol = C.stop;
+    openExplain(q, pick.t);
+  }
+  save(); updateHud();
+}
+function openExplain(q, picked){
+  S.mode = "explain";
+  $("exDomain").textContent = DOMAINS[q.d].label + " · Gate " + S.gateNo;
+  $("exQ").textContent = q.q;
+  $("exPicked").textContent = picked;
+  $("exRight").textContent = q.a;
+  $("exE").textContent = q.e;
+  const out = !saved.settings.study && S.lives <= 0;
+  $("exLives").textContent = saved.settings.study ? "Study mode: no lives lost." : out ? "Out of lives." : `${S.lives} ${S.lives === 1 ? "life" : "lives"} left.`;
+  const btn = $("exGo");
+  btn.textContent = out ? "See results" : "Keep running";
+  btn.disabled = true;
+  $("explain").hidden = false;
+  setTimeout(() => { btn.disabled = false; btn.focus(); }, 700);
+}
+function continueRun(){
+  $("explain").hidden = true;
+  hideCard();
+  if (!saved.settings.study && S.lives <= 0){ gameOver(); return; }
+  S.mode = "play"; S.invuln = 1.2;
+  if (document.activeElement) document.activeElement.blur();
+  S.objs = S.objs.filter(o => o.type === "coin" || o.type === "gate" || o.z > 28 || o.z < 0);
+}
+function hitObstacle(o){
+  if (S.invuln > 0) return;
+  o.hitDone = true;
+  S.lives--; renderHearts();
+  S.invuln = 1.6; S.shake = RM ? 0 : 0.35; S.flash = 0.5; S.flashCol = C.stop;
+  S.streak = Math.max(0, S.streak - 3);
+  if (S.lives <= 0) gameOver();
+}
+function pauseGame(){
+  if (S.mode !== "play") return;
+  S.mode = "paused";
+  $("pLine").textContent = `Score ${score().toLocaleString()} · ${S.correct}/${S.answered} gates correct`;
+  $("paused").hidden = false; $("resumeBtn").focus();
+}
+function resumeGame(){ $("paused").hidden = true; S.mode = "play"; if (document.activeElement) document.activeElement.blur(); }
+function gameOver(){
+  S.mode = "over";
+  $("paused").hidden = true; $("explain").hidden = true;
+  hideCard(); hideToast();
+  const sc = score(), isBest = sc > saved.best && sc > 0;
+  saved.best = Math.max(saved.best, sc); save();
+  $("ovTitle").textContent = saved.settings.study ? "Study run complete" : "Run over";
+  $("ovScore").textContent = sc.toLocaleString();
+  $("ovBest").textContent = isBest ? "New best score" : "Best " + saved.best.toLocaleString();
+  $("ovGates").textContent = S.answered;
+  $("ovAcc").textContent = S.answered ? Math.round(100*S.correct/S.answered) + "%" : "–";
+  $("ovStreak").textContent = S.bestStreak;
+  $("ovCoins").textContent = S.coins;
+  renderBars($("ovDomains"), S.run, "No gates reached in this run.");
+  const ul = $("ovMissed"); ul.innerHTML = "";
+  if (!S.missed.length){
+    const li = document.createElement("li"); li.className = "empty"; li.style.border = "0"; li.style.padding = "0";
+    li.textContent = S.answered ? "No misses. Every gate was the right lane." : "You didn't reach a gate this run.";
+    ul.appendChild(li);
+  } else {
+    for (const m of S.missed){
+      const li = document.createElement("li");
+      const add = (cls, txt) => { const d = document.createElement("div"); d.className = cls; d.textContent = txt; li.appendChild(d); };
+      const chip = document.createElement("span"); chip.className = "chip"; chip.style.setProperty("--dc", C["d-"+m.q.d]); chip.style.alignSelf = "flex-start"; chip.textContent = DOMAINS[m.q.d].label; li.appendChild(chip);
+      add("mq", m.q.q); add("mp", m.picked); add("ma", m.q.a); add("me", m.q.e);
+      ul.appendChild(li);
+    }
+  }
+  $("hud").hidden = true;
+  $("over").hidden = false; $("againBtn").focus();
+}
+function toMenu(){
+  ["over","paused","explain"].forEach(id => $(id).hidden = true);
+  S.mode = "menu"; S.objs = []; S.gate = null; card.hidden = true; hideToast(); $("hud").hidden = true;
+  Object.assign(P, {x:0, lane:0, y:0, vy:0});
+  renderMenu(); $("menu").hidden = false; $("startBtn").focus();
+}
+
+/* ---------- Update ---------- */
+function update(dt){
+  S.clock += dt;
+  S.flash = Math.max(0, S.flash - dt*1.6);
+  S.shake = Math.max(0, S.shake - dt);
+  S.camX += (P.x*0.55 - S.camX)*Math.min(1, dt*6);
+  if (S.mode !== "play" && S.mode !== "menu") return;
+
+  const sp = S.mode === "menu" ? 9 : S.speed;
+  const dz = sp*dt;
+  S.dist += dz; S.runT += dt;
+  S.invuln = Math.max(0, S.invuln - dt);
+
+  if (S.mode === "menu"){
+    S.attractIn -= dt;
+    if (S.attractIn <= 0){ S.attractIn = rand(1.2, 2.6); P.lane = Math.max(-1, Math.min(1, P.lane + (Math.random() < 0.5 ? -1 : 1))); }
+  }
+  P.x += (laneX(P.lane) - P.x)*Math.min(1, dt*15);
+  if (P.y > 0 || P.vy > 0){ P.vy -= GRAV*dt; P.y += P.vy*dt; if (P.y <= 0){ P.y = 0; P.vy = 0; } }
+
+  for (const o of S.objs){ o.pz = o.z; o.z -= dz; }
+
+  // collisions on crossing z = 0
+  for (const o of S.objs){
+    if (!(o.pz > 0 && o.z <= 0.3) || o.done) continue;
+    if (o.type === "gate") continue;
+    if (Math.abs(P.x - laneX(o.lane)) > LANE_W*0.5) { if (o.pz > 0 && o.z <= 0) o.done = true; continue; }
+    if (o.type === "coin"){
+      if (Math.abs(P.y + 0.9 - o.y) < 1.3){ o.done = true; o.dead = true; if (S.mode === "play") S.coins++; }
+    } else if (S.mode === "play" && o.z <= 0){
+      o.done = true;
+      if (o.type === "block" || (o.type === "barrier" && P.y < 1.1)) hitObstacle(o);
+      if (S.mode !== "play") return;
+    }
+  }
+  if (S.mode === "play" && S.gate && S.gate.z <= 0) resolveGate();
+  if (S.mode !== "play" && S.mode !== "menu") return;
+
+  // spawners
+  S.obsIn -= dz;
+  if (S.obsIn <= 0){ spawnPattern(); S.obsIn = rand(1.15, 1.9)*Math.max(14, sp); }
+  if (S.mode === "play" && !S.gate){ S.qIn -= dz; if (S.qIn <= 0) spawnQuestion(); }
+  S.objs = S.objs.filter(o => !o.dead && o.z > -4);
+
+  if (S.mode === "play"){
+    updateCard(); updateHud();
+    if (S.toastUntil > 0 && S.runT > S.toastUntil) hideToast();
+  }
+}
+
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  update(dt); draw();
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Input ---------- */
+function move(d){ P.lane = Math.max(-1, Math.min(1, P.lane + d)); }
+function jump(){ if (P.y <= 0.001){ P.vy = JUMP_V; P.y = 0.001; } }
+function drop(){ if (P.y > 0) P.vy = Math.min(P.vy, -20); }
+addEventListener("keydown", e => {
+  const k = e.key;
+  if (S.mode === "play"){
+    let used = true;
+    if (k === "ArrowLeft" || k === "a" || k === "A") move(-1);
+    else if (k === "ArrowRight" || k === "d" || k === "D") move(1);
+    else if (k === "ArrowUp" || k === "w" || k === "W" || k === " ") jump();
+    else if (k === "ArrowDown" || k === "s" || k === "S") drop();
+    else if (k === "1" || k === "2" || k === "3") P.lane = +k - 2;
+    else if (k === "p" || k === "P" || k === "Escape") pauseGame();
+    else used = false;
+    if (used) e.preventDefault();
+  } else if (S.mode === "paused" && (k === "p" || k === "P" || k === "Escape")){
+    e.preventDefault(); resumeGame();
+  }
+});
+let ptr = null;
+canvas.addEventListener("pointerdown", e => { ptr = {x:e.clientX, y:e.clientY, used:false}; });
+canvas.addEventListener("pointermove", e => {
+  if (!ptr || ptr.used || S.mode !== "play") return;
+  const dx = e.clientX - ptr.x, dy = e.clientY - ptr.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 26) return;
+  ptr.used = true;
+  if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1); else if (dy < 0) jump(); else drop();
+});
+canvas.addEventListener("pointerup", e => {
+  if (ptr && !ptr.used && S.mode === "play"){
+    const r = canvas.getBoundingClientRect(), rx = (e.clientX - r.left)/r.width;
+    if (rx < 0.38) move(-1); else if (rx > 0.62) move(1); else jump();
+  }
+  ptr = null;
+});
+canvas.addEventListener("pointercancel", () => ptr = null);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pauseGame(); });
+
+$("pauseBtn").addEventListener("click", pauseGame);
+$("resumeBtn").addEventListener("click", resumeGame);
+$("endBtn").addEventListener("click", gameOver);
+$("exGo").addEventListener("click", continueRun);
+$("startBtn").addEventListener("click", startRun);
+$("againBtn").addEventListener("click", startRun);
+$("menuBtn").addEventListener("click", toMenu);
+
+/* ---------- Menu ---------- */
+function renderBars(el, data, emptyText){
+  el.innerHTML = "";
+  const any = Object.values(data).some(v => v.t > 0);
+  if (!any){ const p = document.createElement("p"); p.className = "empty"; p.textContent = emptyText; el.appendChild(p); return; }
+  for (const d in DOMAINS){
+    const v = data[d], pct = v.t ? Math.round(100*v.c/v.t) : 0;
+    const row = document.createElement("div"); row.className = "bar"; row.style.setProperty("--dc", C["d-"+d]);
+    row.innerHTML = `<span></span><div class="track"><div class="fill"></div></div><span class="v"></span>`;
+    row.children[0].textContent = DOMAINS[d].label;
+    row.querySelector(".fill").style.width = pct + "%";
+    row.children[2].textContent = v.t ? `${v.c}/${v.t} · ${pct}%` : "–";
+    el.appendChild(row);
+  }
+}
+function renderMenu(){
+  const st = saved.settings, wrapEl = $("domainChips");
+  wrapEl.innerHTML = "";
+  for (const d in DOMAINS){
+    const n = QUESTIONS.filter(q => q.d === d).length;
+    const b = document.createElement("button");
+    b.className = "toggle"; b.id = "dom-" + d; b.style.setProperty("--dc", C["d-"+d]);
+    b.setAttribute("aria-pressed", st.domains[d] ? "true" : "false");
+    b.innerHTML = `<span class="dot"></span><span></span><span class="n"></span>`;
+    b.children[1].textContent = DOMAINS[d].label + " " + DOMAINS[d].weight + "%";
+    b.children[2].textContent = n + " Qs";
+    b.addEventListener("click", () => {
+      const on = Object.values(st.domains).filter(Boolean).length;
+      if (st.domains[d] && on === 1){ $("domainHint").textContent = "Keep at least one domain on."; return; }
+      st.domains[d] = !st.domains[d]; save(); renderMenu();
+    });
+    wrapEl.appendChild(b);
+  }
+  $("domainHint").textContent = "Weights are each domain's share of the real exam.";
+  [...$("modeSeg").children].forEach(b => b.setAttribute("aria-pressed", String((b.dataset.mode === "study") === st.study)));
+  [...$("paceSeg").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pace === st.pace)));
+  $("bestLine").textContent = saved.best ? "Best score " + saved.best.toLocaleString() : "";
+  renderBars($("lifeBars"), saved.life, "Your accuracy per domain shows up here after your first gate.");
+}
+[...$("modeSeg").children].forEach(b => b.addEventListener("click", () => { saved.settings.study = b.dataset.mode === "study"; save(); renderMenu(); }));
+[...$("paceSeg").children].forEach(b => b.addEventListener("click", () => { saved.settings.pace = b.dataset.pace; save(); renderMenu(); }));
+
+/* ---------- Boot ---------- */
+resize();
+addEventListener("resize", resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+renderMenu();
+for (let i=0;i<6;i++) spawnCoins(ri(3)-1, 20 + i*26);
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
